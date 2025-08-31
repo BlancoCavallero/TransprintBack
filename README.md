@@ -4,7 +4,7 @@ Node 22.18.0 (LTS)
 
 inicio de docker
 
-con docker instalado
+con docker instalado y parado en la carpeta docker ejecutar:
 
 docker-compose up -d
 docker ps -> chequeas que este creado
