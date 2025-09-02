@@ -8,7 +8,7 @@ const ROLE_MAP = {
   // agregá más roles según necesites
 };
 
-const registerUser = async (req, res) => {
+const registerAuthUser = async (req, res) => {
   const { email, password, role } = req.body;
 
   if (!email || !password || !role) {
@@ -67,4 +67,4 @@ const registerUser = async (req, res) => {
   }
 };
 
-module.exports = { registerUser };
+module.exports = { registerAuthUser };
