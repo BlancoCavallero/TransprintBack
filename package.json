@@ -1,0 +1,32 @@
+{
+  "name": "transprintback",
+  "version": "1.0.0",
+  "description": "transprint back whit node",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlancoCavallero/TransprintBack.git"
+  },
+  "keywords": [
+    "node",
+    "express",
+    "transprint"
+  ],
+  "author": "Grupo7",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BlancoCavallero/TransprintBack/issues"
+  },
+  "homepage": "https://github.com/BlancoCavallero/TransprintBack#readme",
+  "dependencies": {
+    "axios": "^1.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.14.4"
+  }
+}
