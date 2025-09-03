@@ -3,8 +3,8 @@ const axios = require('axios');
 // Mapeo de roles del frontend al ID de Auth0
 // Estos IDs los obtenés en Auth0 Dashboard → User Management → Roles
 const ROLE_MAP = {
-  Empleado: 'rol_id_empleado',      // cuando lo probemos reemplazar con el ID real del rol en Auth0
-  Administrador: 'rol_id_admin'  
+  Empleado: process.env.ROLE_ID_EMPLEADO,      // cuando lo probemos reemplazar con el ID real del rol en Auth0
+  Administrador: process.env.ROLE_ID_ADMIN  
   // agregá más roles según necesites
 };
 
@@ -17,6 +17,10 @@ const registerAuthUser = async (req, res) => {
 
   if (!ROLE_MAP[role]) {
     return res.status(400).json({ error: 'Rol inválido' });
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  return res.status(400).json({ error: 'Formato de email inválido' });
   }
 
   try {
