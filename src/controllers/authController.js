@@ -3,9 +3,8 @@ const axios = require('axios');
 // Mapeo de roles del frontend al ID de Auth0
 // Estos IDs los obtenés en Auth0 Dashboard → User Management → Roles
 const ROLE_MAP = {
-  Empleado: process.env.ROLE_ID_EMPLEADO,      // cuando lo probemos reemplazar con el ID real del rol en Auth0
-  Administrador: process.env.ROLE_ID_ADMIN  
-  // agregá más roles según necesites
+  Empleado: process.env.ROLE_ID_EMPLEADO,
+  Administrador: process.env.ROLE_ID_ADMIN
 };
 
 const registerAuthUser = async (req, res) => {
