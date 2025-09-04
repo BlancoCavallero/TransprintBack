@@ -9,10 +9,10 @@ const ROLE_MAP = {
 };
 
 const registerAuthUser = async (req, res) => {
-  const { email, password, role } = req.body;
+  const { username, email, password, role } = req.body;
 
-  if (!email || !password || !role) {
-    return res.status(400).json({ error: 'Email, contraseña y rol son requeridos' });
+  if (!email || !username || !password || !role) {
+    return res.status(400).json({ error: 'Email, usuario, contraseña y rol son requeridos' });
   }
 
   if (!ROLE_MAP[role]) {
@@ -37,6 +37,7 @@ const registerAuthUser = async (req, res) => {
     // 2️⃣ Crear usuario en Auth0
     const userResponse = await axios.post(`https://${process.env.AUTH0_DOMAIN}/api/v2/users`, {
       email,
+      username,
       password,
       connection: 'Username-Password-Authentication'
     }, {
@@ -55,7 +56,7 @@ const registerAuthUser = async (req, res) => {
     // 4️⃣ Responder al frontend
     res.status(201).json({
       message: 'Usuario creado y rol asignado correctamente',
-      user: { email: userResponse.data.email, role }
+      user: { username: userResponse.data.username, email: userResponse.data.email, role }
     });
 
   } catch (error) {
@@ -63,7 +64,7 @@ const registerAuthUser = async (req, res) => {
 
     if (error.response && error.response.data) {
       const errData = error.response.data;
-      if (errData.statusCode === 409) message = 'El email ya está registrado';
+      if (errData.statusCode === 409) message = 'El usuario ya está registrado correctamente';
       else if (errData.statusCode === 400) message = 'Datos inválidos';
     }
 
