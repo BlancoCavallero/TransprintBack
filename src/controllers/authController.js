@@ -10,17 +10,35 @@ const ROLE_MAP = {
 const registerAuthUser = async (req, res) => {
   const { username, email, password, role } = req.body;
 
-  if (!email || !username || !password || !role) {
+  const errors = [];
+
+/*  if (!email || !username || !password || !role) {
     return res.status(400).json({ error: 'Email, usuario, contraseña y rol son requeridos' });
+  } */
+
+  // Validaciones personalizadas
+  if (!email) errors.push("El email es requerido");
+  if (!username) errors.push("El nombre de usuario es requerido");
+  if (!password) errors.push("La contraseña es requerida");
+  if (!role) errors.push("El rol es requerido");
+
+if (role && !ROLE_MAP[role]) {
+    errors.push("El rol ingresado no es válido");
   }
 
-  if (!ROLE_MAP[role]) {
-    return res.status(400).json({ error: 'Rol inválido' });
+    // Validar contraseña: 8+ caracteres, al menos una mayúscula, minúscula y número
+  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+  if (!regex.test(password)) {
+    return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número' });
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
   return res.status(400).json({ error: 'Formato de email inválido' });
   }
+
+  if (errors.length > 0) {
+  return res.status(400).json({ error: errors[0] }); // devuelve solo el primero
+}
 
   try {
     // 1️⃣ Obtener token de Auth0
@@ -63,7 +81,7 @@ const registerAuthUser = async (req, res) => {
 
     if (error.response && error.response.data) {
       const errData = error.response.data;
-      if (errData.statusCode === 409) message = 'El usuario ya está registrado correctamente';
+      if (errData.statusCode === 409) message = 'Error, el usuario ya existe';
       else if (errData.statusCode === 400) message = 'Datos inválidos';
     }
 
