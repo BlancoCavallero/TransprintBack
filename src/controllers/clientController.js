@@ -109,6 +109,10 @@ const obtenerClientePorId = async (req, res) => {
 //  Actualizar cliente
 const actualizarCliente = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errores: errors.array() });
+    }
     const { id } = req.params;
     const {
         codPostal,
@@ -116,16 +120,11 @@ const actualizarCliente = async (req, res) => {
         observaciones,
         razonSocial,
         tipo,
-        cuit,
-        nombre,
-        idLocalidad,
-        idProvincia,
         idPersona,
-        idUsuario,
-        idChofer  
+        idLocalidad
     } = req.body;
 
-    const [existe] = await db.query("SELECT * FROM Cliente WHERE id = ?", [
+    const [existe] = await db.query("SELECT * FROM Cliente WHERE idCliente = ?", [
       id,
     ]);
     if (existe.length === 0) {
@@ -134,19 +133,17 @@ const actualizarCliente = async (req, res) => {
 
     await db.query(
       `UPDATE Cliente 
-       SET tipo=?, codPostal=?, correo=?, observaciones=?, razonSocial=?, tipo=?, idLocalidad=?, idProvincia=?, idPersona=?, idUsuario=?, idChofer=? 
-       WHERE id=?`,
-      [
-        tipo,
-        razonSocial,
-        direccion,
-        localidad,
-        provincia,
-        codigoPostal,
-        telefono,
+       SET codPostal=?, correo=?, observaciones=?, razonSocial=?, tipo=?, idPersona=?, idLocalidad=? 
+       WHERE idCliente=?`,
+      [ 
+        codPostal,
         correo,
         observaciones,
-        id,
+        razonSocial,
+        tipo,
+        idPersona,
+        idLocalidad,
+        id
       ]
     );
 
@@ -156,6 +153,7 @@ const actualizarCliente = async (req, res) => {
   }
 };
 
+/*
 //  Eliminar cliente
 const eliminarCliente = async (req, res) => {
   try {
@@ -173,13 +171,13 @@ const eliminarCliente = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Error al eliminar el cliente" });
   }
-};
+};*/
 
 module.exports = {
   validarCliente,
   registrarCliente,
   obtenerClientes,
   obtenerClientePorId,
-  /*actualizarCliente,
-  eliminarCliente,*/
+  actualizarCliente
+  //eliminarCliente,*/
 };
