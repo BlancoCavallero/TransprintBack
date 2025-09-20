@@ -52,9 +52,10 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Persona` (
   `idPersona` INT NOT NULL AUTO_INCREMENT,
-  `cuit` INT(12) NULL,
   `nombre` VARCHAR(45) NULL,
   `apellido` VARCHAR(45) NULL,
+  `cuit` INT(12) NULL,
+  `telefono` INT(30) NULL,
   PRIMARY KEY (`idPersona`),
   UNIQUE INDEX `idPersona_UNIQUE` (`idPersona` ASC) VISIBLE)
 ENGINE = InnoDB;
@@ -70,8 +71,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Cliente` (
   `observaciones` VARCHAR(45) NULL,
   `razonSocial` VARCHAR(45) NULL,
   `tipo` VARCHAR(45) NULL,
-  `idPersona` INT NOT NULL,
-  `idLocalidad` INT NOT NULL,
+  `idPersona` INT NULL,
+  `idLocalidad` INT NULL,
   PRIMARY KEY (`idCliente`),
   UNIQUE INDEX `idCliente_UNIQUE` (`idCliente` ASC) VISIBLE,
   INDEX `fk_Cliente_Persona1_idx` (`idPersona` ASC) VISIBLE,
