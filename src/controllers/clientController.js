@@ -77,7 +77,7 @@ const registrarCliente = async (req, res) => {
     res.status(500).json({ error: "Error en el servidor al registrar el cliente" });
   }
 };
-/*
+
 //  Obtener todos los clientes
 const obtenerClientes = async (req, res) => {
   try {
@@ -92,7 +92,7 @@ const obtenerClientes = async (req, res) => {
 const obtenerClientePorId = async (req, res) => {
   try {
     const { id } = req.params;
-    const [cliente] = await db.query("SELECT * FROM Cliente WHERE id = ?", [
+    const [cliente] = await db.query("SELECT * FROM Cliente WHERE idCliente = ?", [
       id,
     ]);
 
@@ -174,12 +174,12 @@ const eliminarCliente = async (req, res) => {
     res.status(500).json({ error: "Error al eliminar el cliente" });
   }
 };
-*/
+
 module.exports = {
   validarCliente,
   registrarCliente,
-  /*obtenerClientes,
+  obtenerClientes,
   obtenerClientePorId,
-  actualizarCliente,
+  /*actualizarCliente,
   eliminarCliente,*/
 };
