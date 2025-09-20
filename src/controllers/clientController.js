@@ -153,31 +153,30 @@ const actualizarCliente = async (req, res) => {
   }
 };
 
-/*
 //  Eliminar cliente
 const eliminarCliente = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [existe] = await db.query("SELECT * FROM Cliente WHERE id = ?", [
+    const [existe] = await db.query("SELECT * FROM Cliente WHERE idCliente = ?", [
       id,
     ]);
     if (existe.length === 0) {
       return res.status(404).json({ error: "Cliente no encontrado" });
     }
 
-    await db.query("DELETE FROM Cliente WHERE id = ?", [id]);
+    await db.query("DELETE FROM Cliente WHERE idCliente = ?", [id]);
     res.json({ mensaje: "Cliente eliminado correctamente" });
   } catch (error) {
     res.status(500).json({ error: "Error al eliminar el cliente" });
   }
-};*/
+};
 
 module.exports = {
   validarCliente,
   registrarCliente,
   obtenerClientes,
   obtenerClientePorId,
-  actualizarCliente
-  //eliminarCliente,*/
+  actualizarCliente,
+  eliminarCliente
 };

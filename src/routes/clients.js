@@ -5,8 +5,8 @@ const {
   registrarCliente,
   obtenerClientes,
   obtenerClientePorId,
-  actualizarCliente
-  //eliminarCliente,*/
+  actualizarCliente,
+  eliminarCliente
 } = require("../controllers/clientController");
 
 // Rutas CRUD clientes
@@ -14,6 +14,6 @@ router.post("/clients", validarCliente, registrarCliente); // Crear
 router.get("/clients", obtenerClientes);                  // Listar todos
 router.get("/clients/:id", obtenerClientePorId);          // Buscar por ID
 router.put("/clients/:id", validarCliente, actualizarCliente); // Actualizar
-//router.delete("/clients/:id", eliminarCliente);*/           // Eliminar
+router.delete("/clients/:id", eliminarCliente);           // Eliminar
 
 module.exports = router;
