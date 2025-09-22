@@ -1,19 +1,15 @@
 const express = require("express");
 const router = express.Router();
-const {
-  validarCliente,
-  registrarCliente,
-  obtenerClientes,
-  obtenerClientePorId,
-  actualizarCliente,
-  eliminarCliente
-} = require("../controllers/clientController");
 
-// Rutas CRUD clientes
-router.post("/clients", validarCliente, registrarCliente); // Crear
-router.get("/clients", obtenerClientes);                  // Listar todos
-router.get("/clients/:id", obtenerClientePorId);          // Buscar por ID
-router.put("/clients/:id", validarCliente, actualizarCliente); // Actualizar
-router.delete("/clients/:id", eliminarCliente);           // Eliminar
+const clientController = require("../controllers/clientController");
+const validarCliente = require("../validators/clientValidator");
+const validarResultado = require("../middlewares/validarResultado");
+
+router.get("/", clientController.obtenerClientes); // Listar todos
+router.get("/:id", clientController.obtenerClientePorId); // Buscar por ID
+router.post("/", validarCliente, validarResultado, clientController.registrarCliente); // Crear
+router.put("/:id", validarCliente, validarResultado, clientController.actualizarCliente); // Actualizar
+router.delete("/:id", clientController.eliminarCliente); // Eliminar
+           
 
 module.exports = router;

@@ -1,182 +1,66 @@
-const { validationResult, body } = require("express-validator");
-const db = require("../config/db"); // conexión BD
+const clientService = require("../services/clientService");
+const { successResponse, errorResponse } = require("../utils/response");
 
-//  Validaciones comunes
-const validarCliente = [
-  body("codPostal")
-    .notEmpty().withMessage("El código postal es obligatorio")
-    .isNumeric().withMessage("El código postal debe ser numérico"),
-
-  body("correo")
-    .notEmpty().withMessage("El correo es obligatorio")
-    .isEmail().withMessage("Debe ingresar un correo electrónico válido"),
-
-  body("razonSocial")
-    .notEmpty().withMessage("El nombre o razón social es obligatorio"),
-
-  body("tipo")
-    .notEmpty().withMessage("El tipo de cliente es obligatorio")
-    .isIn(["Productor", "Empresa"])
-    .withMessage("El tipo de cliente debe ser 'Productor' o 'Empresa'"),
-
-  body("idPersona")
-    .optional()
-    .isNumeric().withMessage("El ID de persona debe ser numérico"),
-
-  body("idLocalidad")
-    .optional()
-    .isNumeric().withMessage("El ID de localidad debe ser numérico")
-];
-
-//  Registrar cliente
-const registrarCliente = async (req, res) => {
+const registrarCliente = async (req, res, next) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errores: errors.array() });
-    }
+    const { correo } = req.body;
+    const existe = await clientService.obtenerPorCorreo(correo);
+    if (existe) return errorResponse(res, "El cliente con este correo ya está registrado", 400);
 
-    const {
-        codPostal,
-        correo,
-        observaciones,
-        razonSocial,
-        tipo,
-        idPersona,
-        idLocalidad
-    } = req.body;
-
-    // Verificar duplicado
-    const [existe] = await db.query("SELECT * FROM Cliente WHERE correo = ?", [
-      correo,
-    ]);
-    if (existe.length > 0) {
-      return res
-        .status(400)
-        .json({ error: "El cliente con este correo ya está registrado" });
-    }
-
-    await db.query(
-      `INSERT INTO Cliente 
-      (codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad) 
-      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        codPostal,
-        correo,
-        observaciones || null,
-        razonSocial,
-        tipo,
-        idPersona || null,
-        idLocalidad || null, 
-      ]
-    );
-
-    res.status(201).json({ mensaje: "Cliente registrado exitosamente" });
+    await clientService.crearCliente(req.body);
+    successResponse(res, null, "Cliente registrado exitosamente");
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error en el servidor al registrar el cliente" });
+    next(error);
   }
 };
 
-//  Obtener todos los clientes
-const obtenerClientes = async (req, res) => {
+const obtenerClientes = async (req, res, next) => {
   try {
-    const [clientes] = await db.query("SELECT * FROM Cliente");
-    res.json(clientes);
+    const clientes = await clientService.obtenerTodos();
+    successResponse(res, clientes);
   } catch (error) {
-    res.status(500).json({ error: "Error al obtener los clientes" });
+    next(error);
   }
 };
 
-//  Obtener un cliente por ID
-const obtenerClientePorId = async (req, res) => {
+const obtenerClientePorId = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const [cliente] = await db.query("SELECT * FROM Cliente WHERE idCliente = ?", [
-      id,
-    ]);
-
-    if (cliente.length === 0) {
-      return res.status(404).json({ error: "Cliente no encontrado" });
-    }
-
-    res.json(cliente[0]);
+    const cliente = await clientService.obtenerPorId(req.params.id);
+    if (!cliente) return errorResponse(res, "Cliente no encontrado", 404);
+    successResponse(res, cliente);
   } catch (error) {
-    res.status(500).json({ error: "Error al obtener cliente" });
+    next(error);
   }
 };
 
-//  Actualizar cliente
-const actualizarCliente = async (req, res) => {
+const actualizarCliente = async (req, res, next) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errores: errors.array() });
-    }
-    const { id } = req.params;
-    const {
-        codPostal,
-        correo,
-        observaciones,
-        razonSocial,
-        tipo,
-        idPersona,
-        idLocalidad
-    } = req.body;
+    const cliente = await clientService.obtenerPorId(req.params.id);
+    if (!cliente) return errorResponse(res, "Cliente no encontrado", 404);
 
-    const [existe] = await db.query("SELECT * FROM Cliente WHERE idCliente = ?", [
-      id,
-    ]);
-    if (existe.length === 0) {
-      return res.status(404).json({ error: "Cliente no encontrado" });
-    }
-
-    await db.query(
-      `UPDATE Cliente 
-       SET codPostal=?, correo=?, observaciones=?, razonSocial=?, tipo=?, idPersona=?, idLocalidad=? 
-       WHERE idCliente=?`,
-      [ 
-        codPostal,
-        correo,
-        observaciones,
-        razonSocial,
-        tipo,
-        idPersona,
-        idLocalidad,
-        id
-      ]
-    );
-
-    res.json({ mensaje: "Cliente actualizado correctamente" });
+    await clientService.actualizarCliente(req.params.id, req.body);
+    successResponse(res, null, "Cliente actualizado correctamente");
   } catch (error) {
-    res.status(500).json({ error: "Error al actualizar cliente" });
+    next(error);
   }
 };
 
-//  Eliminar cliente
-const eliminarCliente = async (req, res) => {
+const eliminarCliente = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const cliente = await clientService.obtenerPorId(req.params.id);
+    if (!cliente) return errorResponse(res, "Cliente no encontrado", 404);
 
-    const [existe] = await db.query("SELECT * FROM Cliente WHERE idCliente = ?", [
-      id,
-    ]);
-    if (existe.length === 0) {
-      return res.status(404).json({ error: "Cliente no encontrado" });
-    }
-
-    await db.query("DELETE FROM Cliente WHERE idCliente = ?", [id]);
-    res.json({ mensaje: "Cliente eliminado correctamente" });
+    await clientService.eliminarCliente(req.params.id);
+    successResponse(res, null, "Cliente eliminado correctamente");
   } catch (error) {
-    res.status(500).json({ error: "Error al eliminar el cliente" });
+    next(error);
   }
 };
 
 module.exports = {
-  validarCliente,
   registrarCliente,
   obtenerClientes,
   obtenerClientePorId,
   actualizarCliente,
-  eliminarCliente
+  eliminarCliente,
 };
