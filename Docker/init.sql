@@ -80,8 +80,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Cliente` (
   CONSTRAINT `fk_Cliente_Persona1`
     FOREIGN KEY (`idPersona`)
     REFERENCES `mydb`.`Persona` (`idPersona`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE  -- SI BORRA UNA PERSONA SE BORRA TAMBIEN SU OBJETO CLIENTE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Cliente_Localidad1`
     FOREIGN KEY (`idLocalidad`)
     REFERENCES `mydb`.`Localidad` (`idLocalidad`)
@@ -96,7 +96,7 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `mydb`.`Chofer` (
   `idChofer` INT NOT NULL AUTO_INCREMENT,
   `dni` INT NULL,
-  `estadoDisponibilidad` VARCHAR(45) NULL,
+  `estadoDisponibilidad` ENUM('Libre','Ocupado','Inhabilitado') NOT NULL,
   `idPersona` INT NOT NULL,
   PRIMARY KEY (`idChofer`),
   UNIQUE INDEX `idChofer_UNIQUE` (`idChofer` ASC) VISIBLE,
@@ -104,8 +104,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Chofer` (
   CONSTRAINT `fk_Chofer_Persona1`
     FOREIGN KEY (`idPersona`)
     REFERENCES `mydb`.`Persona` (`idPersona`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE -- SI BORRA UNA PERSONA SE BORRA TAMBIEN SU OBJETO CHOFER
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -216,27 +216,27 @@ ENGINE = InnoDB;
 -- Table `mydb`.`Documentacion`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Documentacion` (
-  `idDocumentacion` INT NOT NULL,
+  `idDocumentacion` INT NOT NULL AUTO_INCREMENT,
   `detalle` VARCHAR(45) NULL,
   `estado` VARCHAR(45) NULL,
-  `nombre` VARCHAR(45) NULL,
+  `nombre` VARCHAR(100) NULL,
   `renovacion` INT NULL,
-  `vencimiento` DATE NULL,
-  `idVehiculo` INT NOT NULL,
-  `idChofer` INT NOT NULL,
+  `fechaVencimiento` DATE NULL,
+  `idVehiculo` INT NULL,
+  `idChofer` INT NULL,
   PRIMARY KEY (`idDocumentacion`),
   INDEX `fk_Documentacion_Vehiculo1_idx` (`idVehiculo` ASC) VISIBLE,
   INDEX `fk_Documentacion_Chofer1_idx` (`idChofer` ASC) VISIBLE,
   CONSTRAINT `fk_Documentacion_Vehiculo1`
     FOREIGN KEY (`idVehiculo`)
-    REFERENCES `mydb`.`Vehiculo` (`idVehiculo`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    REFERENCES `mydb`.`Vehiculo` (`idVehiculo`) -- SI BORRA UN VEHICULO SE BORRA TAMBIEN SU DOCUMENTACION
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Documentacion_Chofer1`
     FOREIGN KEY (`idChofer`)
-    REFERENCES `mydb`.`Chofer` (`idChofer`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    REFERENCES `mydb`.`Chofer` (`idChofer`) -- SI BORRA UN CHOFER SE BORRA TAMBIEN SU DOCUMENTACION
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
