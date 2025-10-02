@@ -10,9 +10,9 @@ const registrarChofer = async (req, res, next) => {
   }
 };
 
-const actualizarChofer = async (req, res, next) => {
+const modificarChofer = async (req, res, next) => {
   try {
-    const chofer = await driverService.actualizarChofer(req.params.id, req.body);
+    const chofer = await driverService.modificarChofer(req.params.id, req.body);
     successResponse(res, chofer, "Chofer modificado correctamente");
   } catch (error) {
     next(error);
@@ -67,7 +67,7 @@ const asignarCamion = async (req, res, next) => {
 
 module.exports = {
   registrarChofer,
-  actualizarChofer,
+  modificarChofer,
   eliminarChofer,
   obtenerChoferes, 
   consultarHistorial,

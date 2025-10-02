@@ -9,7 +9,7 @@ const errorHandler = require("./src/middlewares/errorHandler");
 
 
 const app = express();
-app.use(cors());
+app.use(cors()); // permite que el frontend estando en otro puerto pueda acceder
 app.use(express.json());
 
 app.use('/api', authRoutes); 
