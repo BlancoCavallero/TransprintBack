@@ -5,16 +5,18 @@ require('dotenv').config();
 const authRoutes = require('./src/routes/auth');
 const userRoutes = require('./src/routes/users');
 const clientRoutes = require('./src/routes/clients');
+const personaRoutes = require('./src/routes/persons');
 const errorHandler = require("./src/middlewares/errorHandler");
 
 
 const app = express();
-app.use(cors());
+app.use(cors()); // permite que el frontend estando en otro puerto pueda acceder
 app.use(express.json());
 
 app.use('/api', authRoutes); 
 app.use('/api/users', userRoutes);
 app.use('/api/clients', clientRoutes);
+app.use('/api/persons', personaRoutes);
 
 // Middleware global de errores
 app.use(errorHandler);
