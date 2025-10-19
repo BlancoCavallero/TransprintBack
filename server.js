@@ -5,18 +5,24 @@ require('dotenv').config();
 const authRoutes = require('./src/routes/auth');
 const userRoutes = require('./src/routes/users');
 const clientRoutes = require('./src/routes/clients');
-const personaRoutes = require('./src/routes/persons');
+const personRoutes = require('./src/routes/persons');
+const documentationRoutes = require('./src/routes/documentations');
 const errorHandler = require("./src/middlewares/errorHandler");
 
 
 const app = express();
 app.use(cors()); // permite que el frontend estando en otro puerto pueda acceder
 app.use(express.json());
+//expongo la carpeta upload donde se subirán los archivos de las documentaciones 
+//Todo lo que esté dentro de la carpeta /uploads puede ser accedido públicamente desde la URL /uploads/...
+app.use('/uploads', express.static('uploads'));
+
 
 app.use('/api', authRoutes); 
 app.use('/api/users', userRoutes);
 app.use('/api/clients', clientRoutes);
-app.use('/api/persons', personaRoutes);
+app.use('/api/persons', personRoutes);
+app.use('/api/documentations', documentationRoutes);
 
 // Middleware global de errores
 app.use(errorHandler);
