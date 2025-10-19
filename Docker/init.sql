@@ -243,12 +243,12 @@ ENGINE = InnoDB;
 -- Table `mydb`.`Mantenimiento`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Mantenimiento` (
-  `idMantenimiento` INT NOT NULL,
+  `idMantenimiento` INT NOT NULL AUTO_INCREMENT, -- ¡Agregado AUTO_INCREMENT!
   `fecha` DATE NULL,
-  `observaciones` VARCHAR(45) NULL,
+  `observaciones` VARCHAR(255) NULL, -- Más espacio para observaciones
   `tipo` VARCHAR(45) NULL,
   `idVehiculo` INT NOT NULL,
-  PRIMARY KEY (`idMantenimiento`, `idVehiculo`),
+  PRIMARY KEY (`idMantenimiento`), -- Solo idMantenimiento como PK
   INDEX `fk_Mantenimiento_Vehiculo1_idx` (`idVehiculo` ASC) VISIBLE,
   CONSTRAINT `fk_Mantenimiento_Vehiculo1`
     FOREIGN KEY (`idVehiculo`)
