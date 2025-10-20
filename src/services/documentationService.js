@@ -60,8 +60,8 @@ const crear = async (data) => {
 
   const fechaNormalizada = normalizarFecha(fechaVencimiento);
   const [result] = await db.query(    
-    'INSERT INTO Documentacion (detalle, nombre, renovacion, fechaVencimiento) VALUES (?, ?, ?, ?)', //agregar idChofer e idVehículo
-    [detalle, nombre, renovacionInt, fechaVencimiento]
+    'INSERT INTO Documentacion (detalle, nombre, renovacion, fechaVencimiento, idChofer) VALUES (?, ?, ?, ?, ?)', //agregar idChofer e idVehículo
+    [detalle, nombre, renovacionInt, fechaVencimiento, idChoferInt]
   );
   return { id: result.insertId, ...data, fechaVencimiento: fechaNormalizada };
 };
@@ -76,8 +76,8 @@ const actualizar = async (id, data) => {
   //si no viene fecha de vencimiento queda el valor que estaba
   const fechaNormalizada = fechaVencimiento ? normalizarFecha(fechaVencimiento) : resultado.fechaVencimiento;
   await db.query(
-    'UPDATE Documentacion SET detalle = ?, nombre = ?, renovacion = ?, fechaVencimiento = ? WHERE idDocumentacion = ?',//agregar idChofer e idVehículo
-    [detalle, nombre, renovacionInt, fechaNormalizada, id]
+    'UPDATE Documentacion SET detalle = ?, nombre = ?, renovacion = ?, fechaVencimiento = ?, idChofer = ?, WHERE idDocumentacion = ?',//agregar idChofer e idVehículo
+    [detalle, nombre, renovacionInt, fechaNormalizada, idChoferInt, id]
   );
 
 

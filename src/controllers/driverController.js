@@ -1,6 +1,6 @@
 const driverService = require("../services/driverService");
-const { successResponse } = require("../utils/response");
-/*
+const { successResponse, errorResponse } = require("../utils/response");
+
 const registrarChofer = async (req, res, next) => {
   try {
     const chofer = await driverService.registrarChofer(req.body);
@@ -30,125 +30,64 @@ const eliminarChofer = async (req, res, next) => {
 
 const obtenerChoferes = async (req, res, next) => {
   try {
-    const choferes = await driverService.obtenerChoferes(req.query);
-    successResponse(res, choferes, "Búsqueda realizada");
+    const choferes = await driverService.obtenerChoferes();
+    successResponse(res, choferes);
   } catch (error) {
     next(error);
   }
 };
 
-*/
-const obtenerPersonas = async (req, res, next) => {
+const obtenerChofer = async (req, res, next) => {
   try {
-    const personas = await personService.obtenerTodas();
-    successResponse(res, personas);
+    const chofer = await driverService.obtenerPorId(req.params.id);
+    if (!chofer) return errorResponse(res, "Chofer no encontrado", 404);
+    successResponse(res, chofer);
   } catch (error) {
     next(error);
   }
 };
 
-const obtenerPersona = async (req, res, next) => {
-  try {
-    const persona = await personService.obtenerPorId(req.params.id);
-    if (!persona) return errorResponse(res, "Persona no encontrada", 404);
-    res.json(persona);
-  } catch (error) {
-    next(error);
-  }
-};
 
-const registrarChofer = async (req, res, next) => {
-  try {
-    const chofer = await driverService.registrarChofer(req.body);
-    successResponse(res, chofer, "Chofer registrado correctamente");
-  } catch (error) {
-    next(error);
-  }
-};
-
-const crearPersona = async (req, res, next) => {
-  try {
-    const { cuit } = req.body;
-    const existe = await personService.obtenerPorCuit(cuit);
-    if (existe) return errorResponse(res, "La persona con este cuit ya está registrada", 400);
-        
-    await personService.crear(req.body);
-    successResponse(res, null, "Persona creada exitosamente");
-  } catch (error) {
-    console.error("Error al crear persona:", error);
-
-    // Manejo de errores que pueden provenir de la base de datos
-    if (error.sqlMessage) {
-      if (error.sqlMessage.includes("Out of range value")) {
-        if (error.sqlMessage.includes("cuit")) {
-          return errorResponse(res, "El número de CUIT es inválido o demasiado largo.", 400);
-        } else if (error.sqlMessage.includes("telefono")) {
-          return errorResponse(res, "El número de teléfono es es inválido o demasiado largo.", 400);
-        }
-      }
-    }
-    next(error);
-  }
-};
-
-const actualizarPersona = async (req, res, next) => {
-  try {
-    const persona = await personService.obtenerPorId(req.params.id);
-    if (!persona) return errorResponse(res, "Persona no encontrada", 404);
-  
-    await personService.actualizar(req.params.id, req.body);
-    successResponse(res, null, "Persona actualizada correctamente");
-  } catch (error) {
-    next(error);
-  }
-};
-
-const eliminar = async (req, res, next) => {
-    try {
-    const persona = await personService.obtenerPorId(req.params.id);
-    if (!persona) return errorResponse(res, "Persona no encontrada", 404);
-
-    await personService.eliminar(req.params.id);
-    successResponse(res, null, "Persona eliminada correctamente");
-  } catch (error) {
-    next(error);
-  }
-};
-/*
+// --- Consultar historial de viajes ---
 const consultarHistorial = async (req, res, next) => {
   try {
-    const historial = await driverService.consultarHistorial(req.params.id, req.query);
+    const { desde, hasta, estado } = req.query;
+    const historial = await driverService.consultarHistorial(req.params.id, { desde, hasta, estado });
     successResponse(res, historial, "Historial de viajes obtenido");
   } catch (error) {
     next(error);
   }
 };
 
+// --- Consultar disponibilidad ---
 const consultarDisponibilidad = async (req, res, next) => {
   try {
-    const disponibilidad = await driverService.consultarDisponibilidad(req.params.id);
-    successResponse(res, disponibilidad, "Disponibilidad consultada");
+    const estado = await driverService.consultarDisponibilidad(req.params.id);
+    successResponse(res, { estadoDisponibilidad: estado }, "Disponibilidad consultada");
   } catch (error) {
     next(error);
   }
 };
 
-const asignarCamion = async (req, res, next) => {
+// --- Asignar Vehículo ---
+const asignarVehiculo = async (req, res, next) => {
   try {
-    const asignacion = await driverService.asignarCamion(req.params.id, req.body.idCamion);
-    successResponse(res, asignacion, "Camión asignado correctamente");
+    const { idVehiculo } = req.body;
+    const resultado = await driverService.asignarVehiculo(req.params.id, idVehiculo);
+    successResponse(res, resultado, "Vehículo asignado correctamente");
   } catch (error) {
     next(error);
   }
 };
 
-*/
+
 module.exports = {
   registrarChofer,
   modificarChofer,
   eliminarChofer,
-  obtenerChoferes, 
+  obtenerChoferes,
+  obtenerChofer,
   consultarHistorial,
   consultarDisponibilidad,
-  asignarCamion,
+  asignarVehiculo
 };

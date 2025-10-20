@@ -1,98 +1,162 @@
-/*const db = require("../config/db");
+const db = require("../config/db");
 
+// --- Función para verificar la documentación de un chofer ---
 const verificarDocumentacion = async (idChofer) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
 
-  function normalizarFecha(fecha) {
-  const f = new Date(fecha);
-  f.setHours(0, 0, 0, 0);
-  return f;
-  }
-
-  const hoy = normalizarFecha(new Date());
-
-  // Traigo toda la documentación del chofer
   const [documentos] = await db.query(
     "SELECT nombre, fechaVencimiento FROM Documentacion WHERE idChofer = ?",
     [idChofer]
   );
 
-  if (!documentos || documentos.length === 0) {
-    return false; // no tiene documentación
-  }
+  if (!documentos.length) return false;
 
-  // Busco los documentos clave
-  const carnet = documentos.find(doc => doc.nombre.toLowerCase() === "carnet");
-  const examen = documentos.find(doc => doc.nombre.toLowerCase() === "examen");
+  // Buscar carnet y examen médico, por ejemplo
+  const carnet = documentos.find(d => d.nombre.toLowerCase().includes("carnet"));
+  const examen = documentos.find(d => d.nombre.toLowerCase().includes("examen"));
 
-  if (!carnet || !examen) {
-    return false; // le falta alguno
-  }
+  if (!carnet || !examen) return false;
 
-  // Verifico vencimientos
-  const carnetVigente = normalizarFecha(carnet.fechaVencimiento) >= hoy;
-  const examenVigente = normalizarFecha(examen.fechaVencimiento) >= hoy;
+  const carnetVigente = new Date(carnet.fechaVencimiento) >= hoy;
+  const examenVigente = new Date(examen.fechaVencimiento) >= hoy;
 
   return carnetVigente && examenVigente;
 };
 
+// --- Registrar chofer ---
 const registrarChofer = async (data) => {
   const { dni, idPersona } = data;
-  const idPersona = personaResult.insertId;
-  //const estadoDoc = verificarDocumentacion(idChofer) ? "libre" : "inhabilitado";
-  //activar las constantes anteriores cuando se tenga los modulos Persona y Documentacion.
-  const estadoDisponibilidad = "inhabilitado";
 
-  const [choferResult] = await db.query(
+  const estadoDoc = await verificarDocumentacion(data.idChofer);
+  const estadoDisponibilidad = estadoDoc ? "Libre" : "Inhabilitado";
+  
+  //verifico que no se repita el dni
+  const [existeDni] = await db.query(
+    "SELECT * FROM Chofer WHERE dni = ?",
+    [dni]
+  );
+  if (existeDni.length > 0) {
+    throw new Error("Ya existe un chofer registrado con ese dni");
+  } 
+
+  //verifico que el idPersona no esté usado en otro chofer
+  const [existe] = await db.query(
+    "SELECT * FROM Chofer WHERE idPersona = ?",
+    [idPersona]
+  );
+  if (existe.length > 0) {
+    throw new Error("Ya existe un chofer registrado con ese idPersona");
+  } 
+
+  //verifico que la persona ya esté registrada
+  const [existePersona] = await db.query(
+    "SELECT * FROM Persona WHERE idPersona = ?",
+    [idPersona]
+  );
+  if (existePersona.length == 0) {
+    throw new Error("El idPersona ingresado no existe ");
+  }
+  
+  const [result] = await db.query(
     "INSERT INTO Chofer (dni, estadoDisponibilidad, idPersona) VALUES (?, ?, ?)",
     [dni, estadoDisponibilidad, idPersona]
   );
 
-  return { idChofer: choferResult.insertId, idPersona, estadoDisponibilidad };
+  return { idChofer: result.insertId, idPersona, estadoDisponibilidad };
 };
 
-exports.modificarChofer = async (idChofer, data) => {
-  const { nombre, apellido, telefono, fechaVencimientoCarnet, fechaVencimientoExamen } = data;
+// --- Modificar chofer ---
+const modificarChofer = async (idChofer, data) => {
+  const { dni, idPersona } = data;
 
-  const estadoDoc = verificarDocumentacion({ fechaVencimientoCarnet, fechaVencimientoExamen }) ? "libre" : "inhabilitado";
+  //Verifico que el chofer exista
+  const [choferExistente] = await db.query(
+    "SELECT * FROM Chofer WHERE idChofer = ?",
+    [idChofer]
+  );
+  if (choferExistente.length === 0) {
+    throw new Error("El chofer no existe");
+  }
+
+  //verifico que no se repita el dni
+  const [existeDni] = await db.query(
+    "SELECT * FROM Chofer WHERE dni = ?  AND idChofer != ?",
+    [dni, idChofer]
+  );
+  if (existeDni.length > 0) {
+    throw new Error("Ya existe un chofer registrado con ese DNI");
+  } 
+
+  //verifico que el idPersona no esté usado en otro chofer
+  const [existe] = await db.query(
+    "SELECT * FROM Chofer WHERE idPersona = ?",
+    [idPersona]
+  );
+  if (existe.length > 0) {
+    throw new Error("Ya existe un chofer registrado con ese idPersona");
+  } 
+
+   //verifico que la persona ya esté registrada
+  const [existePersona] = await db.query(
+    "SELECT * FROM Persona WHERE idPersona = ?",
+    [idPersona]
+  );
+  if (existePersona.length === 0) {
+    throw new Error("El idPersona ingresado no existe ");
+  }
 
   await db.query(
-    `UPDATE Persona p
-     JOIN Chofer c ON c.idPersona = p.idPersona
-     SET p.nombre = ?, p.apellido = ?, p.telefono = ?, c.fechaVencimientoCarnet = ?, c.fechaVencimientoExamen = ?, c.estadoDisponibilidad = ?
-     WHERE c.idChofer = ?`,
-    [nombre, apellido, telefono, fechaVencimientoCarnet, fechaVencimientoExamen, estadoDoc, idChofer]
+    "UPDATE Chofer SET dni = ?, idPersona = ? WHERE idChofer = ?",
+    [dni, idPersona, idChofer]
   );
 
-  return { idChofer, actualizado: true, estadoDisponibilidad: estadoDoc };
+  return { idChofer, actualizado: true };
 };
 
-exports.eliminarChofer = async (idChofer) => {
-  const [viajes] = await db.query(
+// --- Eliminar chofer ---
+const eliminarChofer = async (idChofer) => {
+//activar cuando exista viaje
+/*  const [viajes] = await db.query(
     "SELECT * FROM Viaje WHERE idChofer = ? AND estado = 'activo'",
     [idChofer]
   );
-  if (viajes.length > 0) throw new Error("El chofer tiene viajes activos y no puede eliminarse");
-
-  await db.query("UPDATE Chofer SET estadoDisponibilidad = 'inhabilitado' WHERE idChofer = ?", [idChofer]);
+  if (viajes.length > 0)
+    throw new Error("El chofer tiene viajes activos y no puede eliminarse");
+*/
+  await db.query(
+    "UPDATE Chofer SET estadoDisponibilidad = 'Inhabilitado' WHERE idChofer = ?",
+    [idChofer]
+  );
 };
 
-exports.buscarChofer = async (filters) => {
-  let query = `
-    SELECT c.idChofer, p.nombre, p.apellido, p.dni, c.estadoDisponibilidad
+// --- Obtener todos los choferes ---
+const obtenerChoferes = async () => {
+  const [rows] = await db.query(`
+    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+           p.nombre, p.apellido, p.cuit, p.telefono, p.idPersona
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
-    WHERE 1=1
-  `;
-  const params = [];
-  if (filters.nombre) { query += " AND p.nombre LIKE ?"; params.push(`%${filters.nombre}%`); }
-  if (filters.apellido) { query += " AND p.apellido LIKE ?"; params.push(`%${filters.apellido}%`); }
-
-  const [rows] = await db.query(query, params);
+  `);
   return rows;
 };
 
-exports.consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
-  let query = "SELECT fecha, origen, destino, camion, estado, gastos FROM Viaje WHERE idChofer = ?";
+// --- Obtener un chofer ---
+const obtenerPorId = async (idChofer) => {
+  const [[row]] = await db.query(`
+    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+           p.nombre, p.apellido, p.cuit, p.telefono
+    FROM Chofer c
+    JOIN Persona p ON c.idPersona = p.idPersona
+    WHERE c.idChofer = ?
+  `, [idChofer]);
+  return row;
+};
+
+
+// --- Consultar historial de viajes ---
+const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
+  let query = "SELECT fecha, origen, destino, vehiculo, estado, gastos FROM Viaje WHERE idChofer = ?";
   const params = [idChofer];
 
   if (desde) { query += " AND fecha >= ?"; params.push(desde); }
@@ -103,29 +167,44 @@ exports.consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
   return rows;
 };
 
-exports.consultarDisponibilidad = async (idChofer) => {
-  const [[chofer]] = await db.query("SELECT estadoDisponibilidad FROM Chofer WHERE idChofer = ?", [idChofer]);
+// --- Consultar disponibilidad ---
+const consultarDisponibilidad = async (idChofer) => {
+  const [[chofer]] = await db.query(
+    "SELECT estadoDisponibilidad FROM Chofer WHERE idChofer = ?",
+    [idChofer]
+  );
   return chofer ? chofer.estadoDisponibilidad : null;
 };
 
-exports.asignarCamion = async (idChofer, idCamion) => {
-  const [[camion]] = await db.query("SELECT estado FROM Camion WHERE idCamion = ?", [idCamion]);
-  if (!camion || camion.estado !== "disponible") throw new Error("El camión no está disponible");
+// --- Asignar vehiculo a chofer ---
+const asignarVehiculo = async (idChofer, idVehiculo) => {
+  const [[vehiculo]] = await db.query(
+    "SELECT estado FROM Vehiculo WHERE idVehiculo = ?",
+    [idVehiculo]
+  );
+  if (!vehiculo || vehiculo.estado !== "disponible") throw new Error("El vehículo no está disponible");
 
-  await db.query("UPDATE Camion SET idChofer = ?, estado = 'asignado' WHERE idCamion = ?", [idChofer, idCamion]);
-  await db.query("UPDATE Chofer SET estadoDisponibilidad = 'ocupado' WHERE idChofer = ?", [idChofer]);
+  await db.query(
+    "UPDATE Vehiculo SET idChofer = ?, estado = 'asignado' WHERE idVehiculo = ?",
+    [idChofer, idVehiculo]
+  );
 
-  return { idChofer, idCamion, asignado: true };
+  await db.query(
+    "UPDATE Chofer SET estadoDisponibilidad = 'Ocupado' WHERE idChofer = ?",
+    [idChofer]
+  );
+
+  return { idChofer, idVehiculo, asignado: true };
 };
-
 
 module.exports = {
   registrarChofer,
-  obtenerTodas,
+  modificarChofer,
+  eliminarChofer,
+  obtenerChoferes,
   obtenerPorId,
-  obtenerPorCuit,
-  actualizar,
-  eliminar
-}
-
-*/
+  verificarDocumentacion,
+  consultarHistorial,
+  consultarDisponibilidad,
+  asignarVehiculo
+};
