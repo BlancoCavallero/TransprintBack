@@ -113,8 +113,8 @@ ENGINE = InnoDB;
 -- Table `mydb`.`Vehiculo`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Vehiculo` (
-  `idVehiculo` INT NOT NULL,
-  `año` INT NULL,
+  `idVehiculo` INT NOT NULL AUTO_INCREMENT,
+  `anio` INT NULL,
   `estado` VARCHAR(45) NULL,
   `marca` VARCHAR(45) NULL,
   `modelo` VARCHAR(45) NULL,
