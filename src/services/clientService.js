@@ -16,20 +16,79 @@ const obtenerPorCorreo = async (correo) => {
 };
 
 const crearCliente = async (cliente) => {
+  
   const { codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad } = cliente;
-  return db.query(
-    `INSERT INTO Cliente (codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [codPostal, correo, observaciones || null, razonSocial, tipo, idPersona || null, idLocalidad || null]
+
+  //verifico que el idPersona no esté usado en otro cliente
+  const [existe] = await db.query(
+    "SELECT * FROM Cliente WHERE idPersona = ?",
+    [idPersona]
   );
+  if (existe.length > 0) {
+    throw new Error("Ya existe un cliente registrado con ese idPersona");
+  } 
+
+  //verifico que la persona ya esté registrada
+  const [existePersona] = await db.query(
+    "SELECT * FROM Persona WHERE idPersona = ?",
+    [idPersona]
+  );
+  if (existePersona.length == 0) {
+    throw new Error("El idPersona ingresado no existe ");
+  }
+  
+  const [result] = await db.query(
+    "INSERT INTO Cliente (codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [codPostal, correo, observaciones || null, razonSocial, tipo, idPersona, idLocalidad || null]
+  );
+
+  return { idCliente: result.insertId, codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad};
 };
 
 const actualizarCliente = async (id, cliente) => {
   const { codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad } = cliente;
-  return db.query(
-    `UPDATE Cliente SET codPostal=?, correo=?, observaciones=?, razonSocial=?, tipo=?, idPersona=?, idLocalidad=? WHERE idCliente=?`,
+  //Verifico que el cliente exista
+  const [clienteExistente] = await db.query(
+    "SELECT * FROM Cliente WHERE idCliente = ?",
+    [idCliente]
+  );
+  if (clienteExistente.length === 0) {
+    throw new Error("El cliente no existe");
+  }
+
+  //verifico que no se repita el dni
+  const [existeDni] = await db.query(
+    "SELECT * FROM Cliente WHERE dni = ?  AND idCliente != ?",
+    [dni, idCliente]
+  );
+  if (existeDni.length > 0) {
+    throw new Error("Ya existe un cliente registrado con ese DNI");
+  } 
+
+  //verifico que el idPersona no esté usado en otro cliente
+  const [existe] = await db.query(
+    "SELECT * FROM Cliente WHERE idPersona = ?",
+    [idPersona]
+  );
+  if (existe.length > 0) {
+    throw new Error("Ya existe un cliente registrado con ese idPersona");
+  } 
+
+   //verifico que la persona ya esté registrada
+  const [existePersona] = await db.query(
+    "SELECT * FROM Persona WHERE idPersona = ?",
+    [idPersona]
+  );
+  if (existePersona.length === 0) {
+    throw new Error("El idPersona ingresado no existe ");
+  }
+
+  await db.query(
+    "UPDATE Cliente SET codPostal = ?, correo = ?, observaciones = ?, razonSocial = ?, tipo = ?, idPersona = ?, idLocalidad = ? WHERE idCliente = ?",
     [codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad, id]
   );
+
+  return { idCliente, actualizado: true };
 };
 
 const eliminarCliente = async (id) => {
