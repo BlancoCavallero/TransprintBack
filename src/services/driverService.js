@@ -141,7 +141,7 @@ const obtenerChoferes = async () => {
   return rows;
 };
 
-// --- Obtener un chofer ---
+// --- Obtener un chofer ID---
 const obtenerPorId = async (idChofer) => {
   const [[row]] = await db.query(`
     SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
@@ -153,6 +153,72 @@ const obtenerPorId = async (idChofer) => {
   return row;
 };
 
+/*
+// --- Obtener un chofer por nombre---
+const obtenerPorNombre = async (nombre) => {
+  const [rows] = await db.query(`
+    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+           p.nombre, p.apellido, p.cuit, p.telefono
+    FROM Chofer c
+    JOIN Persona p ON c.idPersona = p.idPersona
+    WHERE p.nombre COLLATE utf8mb4_general_ci = ?
+  `, [nombre]);
+  return rows;
+};
+// --- Obtener un chofer por apellido---
+const obtenerPorApellido = async (apellido) => {
+  const [rows] = await db.query(`
+    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+           p.nombre, p.apellido, p.cuit, p.telefono
+    FROM Chofer c
+    JOIN Persona p ON c.idPersona = p.idPersona
+    WHERE p.apellido COLLATE utf8mb4_general_ci = ?
+  `, [apellido]);
+  return rows;
+};
+// --- Obtener un chofer por estado de disponibilidad---
+const obtenerPorEstado = async (estado) => {
+  const [rows] = await db.query(`
+    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+           p.nombre, p.apellido, p.cuit, p.telefono
+    FROM Chofer c
+    JOIN Persona p ON c.idPersona = p.idPersona
+    WHERE LOWER(c.estadoDisponibilidad) = LOWER(?)
+  `, [estado]);
+  return rows;
+};
+// --- Obtener un chofer por DNI ---
+const obtenerPorDni = async (dni) => {
+  const [rows] = await db.query(`
+    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+           p.nombre, p.apellido, p.cuit, p.telefono
+    FROM Chofer c
+    JOIN Persona p ON c.idPersona = p.idPersona
+    WHERE c.dni = ?
+  `, [dni]);
+  return rows;
+};
+*/
+
+// --- Obtener choferes por nombre, apellido, DNI o estado ---
+const obtenerChoferesFiltrados = async (valor) => {
+  // Verificamos si el valor es un número para buscar por DNI
+  const esNumero = /^\d+$/.test(valor);
+
+  const [rows] = await db.query(`
+    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+           p.nombre, p.apellido, p.cuit, p.telefono
+    FROM Chofer c
+    JOIN Persona p ON c.idPersona = p.idPersona
+    WHERE
+      LOWER(CONVERT(p.nombre USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
+      OR LOWER(CONVERT(p.apellido USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
+      OR LOWER(CONVERT(c.estadoDisponibilidad USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
+      ${esNumero ? "OR c.dni = ?" : ""}
+  `, esNumero ? [valor, valor, valor, valor] : [valor, valor, valor]);
+
+  return rows;
+};
 
 // --- Consultar historial de viajes ---
 const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
@@ -203,8 +269,15 @@ module.exports = {
   eliminarChofer,
   obtenerChoferes,
   obtenerPorId,
+
+  obtenerChoferesFiltrados,
   verificarDocumentacion,
   consultarHistorial,
   consultarDisponibilidad,
   asignarVehiculo
 };
+
+/*  obtenerPorNombre,
+  obtenerPorApellido,
+  obtenerPorEstado,
+  obtenerPorDni, */
