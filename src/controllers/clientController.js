@@ -33,6 +33,21 @@ const obtenerClientePorId = async (req, res, next) => {
   }
 };
 
+const obtenerClientesFiltradosController = async (req, res) => {
+  try {
+    const { valor } = req.params;
+    const clientes = await clientService.obtenerClientesFiltrados(valor);
+
+    if (!clientes.length) {
+      return res.status(404).json({ mensaje: "No se encontraron clientes" });
+    }
+
+    res.json(clientes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const actualizarCliente = async (req, res, next) => {
   try {
     const cliente = await clientService.obtenerPorId(req.params.id);
@@ -61,6 +76,7 @@ module.exports = {
   registrarCliente,
   obtenerClientes,
   obtenerClientePorId,
+  obtenerClientesFiltradosController,
   actualizarCliente,
   eliminarCliente,
 };

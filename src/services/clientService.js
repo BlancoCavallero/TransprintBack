@@ -10,6 +10,26 @@ const obtenerPorId = async (id) => {
   return rows[0] || null;
 };
 
+// --- Obtener clientes por tipo, nombre, razon social o CUIT ---
+const obtenerClientesFiltrados = async (valor) => {
+  // Verificamos si el valor es un número para buscar por DNI
+  const esNumero = /^\d+$/.test(valor);
+  //falta filtrar por localidad o provincia
+  const [rows] = await db.query(`
+    SELECT c.codPostal, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
+           p.nombre, p.apellido, p.cuit, p.telefono
+    FROM Cliente c
+    JOIN Persona p ON c.idPersona = p.idPersona
+    WHERE
+      LOWER(CONVERT(c.tipo USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
+      OR LOWER(CONVERT(p.nombre USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
+      OR LOWER(CONVERT(c.razonSocial USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
+      ${esNumero ? "OR p.cuit = ?" : ""}
+  `, esNumero ? [valor, valor, valor, valor] : [valor, valor, valor]);
+
+  return rows;
+};
+
 const obtenerPorCorreo = async (correo) => {
   const [rows] = await db.query("SELECT * FROM Cliente WHERE correo = ?", [correo]);
   return rows[0] || null;
@@ -98,6 +118,7 @@ const eliminarCliente = async (id) => {
 module.exports = {
   obtenerTodos,
   obtenerPorId,
+  obtenerClientesFiltrados,
   obtenerPorCorreo,
   crearCliente,
   actualizarCliente,

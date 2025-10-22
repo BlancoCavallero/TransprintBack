@@ -7,6 +7,7 @@ const validarResultado = require("../middlewares/validarResultado");
 
 router.get("/", clientController.obtenerClientes); // Listar todos
 router.get("/:id", clientController.obtenerClientePorId); // Buscar por ID
+router.get("/buscar/:valor", clientController.obtenerClientesFiltradosController); //buscar por otros filtros
 router.post("/", validarCliente, validarResultado, clientController.registrarCliente); // Crear
 router.put("/:id", validarCliente, validarResultado, clientController.actualizarCliente); // Actualizar
 router.delete("/:id", clientController.eliminarCliente); // Eliminar
