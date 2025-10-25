@@ -1,13 +1,37 @@
 const db = require("../config/db");
 
-const obtenerVehiculos = async () => {
-  const [rows] = await db.query("SELECT * FROM Vehiculo");
-  return rows;
-};
 
-const obtenerVehiculoPorId = async (id) => {
-  const [rows] = await db.query("SELECT * FROM Vehiculo WHERE idVehiculo = ?", [id]);
-  return rows[0];
+const buscarVehiculos = async (filtros) => {
+  let query = "SELECT * FROM Vehiculo WHERE 1=1";
+  const params = [];
+
+  if (filtros.idVehiculo) {
+    query += " AND idVehiculo = ?";
+    params.push(filtros.idVehiculo);
+  }
+  if (filtros.marca) {
+    query += " AND marca LIKE ?";
+    params.push(`%${filtros.marca}%`);
+  }
+  if (filtros.modelo) {
+    query += " AND modelo LIKE ?";
+    params.push(`%${filtros.modelo}%`);
+  }
+  if (filtros.patente) {
+    query += " AND patente LIKE ?";
+    params.push(`%${filtros.patente}%`);
+  }
+  if (filtros.tipo) {
+    query += " AND tipo LIKE ?";
+    params.push(`%${filtros.tipo}%`);
+  }
+  if (filtros.estado) {
+    query += " AND estado LIKE ?";
+    params.push(`%${filtros.estado}%`);
+  }
+
+  const [rows] = await pool.query(query, params);
+  return rows;
 };
 
 const crear = async (vehiculo) => {
@@ -33,9 +57,10 @@ const eliminarVehiculo = async (id) => {
   return { message: "Vehículo eliminado correctamente" };
 };
 
+
+
 module.exports = {
-  obtenerVehiculos ,
-  obtenerVehiculoPorId,
+  buscarVehiculos,
   crear,
   actualizar,
   eliminarVehiculo,
