@@ -1,7 +1,7 @@
 const db = require("../config/db");
 
 
-const buscarVehiculos = async (filtros) => {
+const obtenerVehiculos = async (filtros = {}) => {
   let query = "SELECT * FROM Vehiculo WHERE 1=1";
   const params = [];
 
@@ -30,9 +30,10 @@ const buscarVehiculos = async (filtros) => {
     params.push(`%${filtros.estado}%`);
   }
 
-  const [rows] = await pool.query(query, params);
+  const [rows] = await db.query(query, params);
   return rows;
 };
+
 
 const crear = async (vehiculo) => {
   const { anio, estado, marca, modelo, patente, tipo } = vehiculo;
@@ -43,6 +44,7 @@ const crear = async (vehiculo) => {
   return { idVehiculo: result.insertId, ...vehiculo };
 };
 
+
 const actualizar = async (id, vehiculo) => {
   const { anio, estado, marca, modelo, patente, tipo } = vehiculo;
   await db.query(
@@ -52,15 +54,14 @@ const actualizar = async (id, vehiculo) => {
   return { idVehiculo: id, ...vehiculo };
 };
 
+
 const eliminarVehiculo = async (id) => {
   await db.query("DELETE FROM Vehiculo WHERE idVehiculo = ?", [id]);
   return { message: "Vehículo eliminado correctamente" };
 };
 
-
-
 module.exports = {
-  buscarVehiculos,
+  obtenerVehiculos,
   crear,
   actualizar,
   eliminarVehiculo,
