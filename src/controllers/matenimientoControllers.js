@@ -36,24 +36,67 @@ mantenimientoController.crearMantenimiento = (req, res) => {
 };
 
 // ------------------------------------------------------------------
-// READ (Obtener todos los mantenimientos)
+// READ (Obtener todos los mantenimientos CON FILTRO)
 // GET /api/mantenimientos
 // ------------------------------------------------------------------
 mantenimientoController.obtenerMantenimientos = (req, res) => {
-    // Consulta SQL para seleccionar todos los registros
-    const query = `
+    // 1. Extraigo los parámetros de la URL (query parameters)
+    const { idVehiculo, tipo, fechaDesde, fechaHasta } = req.query;
+
+    // 2. Definir la base de la consulta
+    let query = `
         SELECT m.*, v.patente 
         FROM Mantenimiento m
         JOIN Vehiculo v ON m.idVehiculo = v.idVehiculo
-        ORDER BY m.fecha DESC
     `;
+    let conditions = []; // Array para almacenar las cláusulas WHERE
+    let values = [];      // Array para almacenar los valores a sanitizar
+    
+    // 3. Construir la cláusula WHERE dinámicamente
 
-    db.query(query, (err, results) => {
+    // Filtro 1: Por Vehículo (idVehiculo)
+    if (idVehiculo) {
+        // Le dice a MySQL: donde la columna idVehiculo coincida con el valor que pasaremos
+        conditions.push('m.idVehiculo = ?');
+        values.push(idVehiculo);
+    }
+    
+    // Filtro 2: Por Tipo de Mantenimiento ('Preventivo' o 'Correctivo')
+    if (tipo) {
+        conditions.push('m.tipo = ?');
+        values.push(tipo);
+    }
+    
+    // Filtro 3: Por Rango de Fecha (Fecha de inicio)
+    if (fechaDesde) {
+        // m.fecha >= ? : Trae mantenimientos que ocurrieron en o después de esta fecha
+        conditions.push('m.fecha >= ?');
+        values.push(fechaDesde);
+    }
+    
+    // Filtro 4: Por Rango de Fecha (Fecha de fin)
+    if (fechaHasta) {
+        // m.fecha <= ? : Trae mantenimientos que ocurrieron en o antes de esta fecha
+        conditions.push('m.fecha <= ?');
+        values.push(fechaHasta);
+    }
+
+    // 4. Agregar la cláusula WHERE a la consulta si hay condiciones
+    if (conditions.length > 0) {
+        // Si conditions es ['cond1', 'cond2'], se convierte en 'cond1 AND cond2'
+        query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    // 5. Agregar la ordenación final (siempre ordenado)
+    query += ' ORDER BY m.fecha DESC';
+
+    // 6. Ejecutar la consulta con la sentencia SQL y los valores
+    db.query(query, values, (err, results) => {
         if (err) {
-            console.error('Error al obtener mantenimientos:', err);
-            return res.status(500).json({ message: 'Error interno del servidor' });
+            console.error('Error al obtener mantenimientos con filtro:', err);
+            return res.status(500).json({ message: 'Error interno del servidor al filtrar' });
         }
-        // Éxito: Devuelve la lista de mantenimientos
+        
         res.status(200).json(results);
     });
 };
