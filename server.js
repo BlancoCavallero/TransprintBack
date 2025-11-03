@@ -31,6 +31,3 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-const vehiculosRoutes = require("./src/routes/vehiculos");
-app.use("/api/vehiculos", vehiculosRoutes);
