@@ -5,32 +5,47 @@ const verificarDocumentacion = async (idChofer) => {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
+    // Consultar todos los documentos del chofer
   const [documentos] = await db.query(
     "SELECT nombre, fechaVencimiento FROM Documentacion WHERE idChofer = ?",
     [idChofer]
   );
 
-  if (!documentos.length) return false;
+  if (!documentos.length) {
+    return { cumpleRequisitos: false, motivos: ["No tiene documentación cargada"] };
+  }
+/*  if (!documentos.length) return false;*/
 
   // Buscar carnet y examen médico, por ejemplo
-  const carnet = documentos.find(d => d.nombre.toLowerCase().includes("carnet"));
-  const examen = documentos.find(d => d.nombre.toLowerCase().includes("examen"));
+  const carnet = documentos.find((d) => d.nombre.toLowerCase().includes("carnet"));
+  const examen = documentos.find((d) => d.nombre.toLowerCase().includes("examen"));
 
-  if (!carnet || !examen) return false;
+  const motivos = [];
+  if (!carnet) motivos.push("Falta carnet");
+  if (!examen) motivos.push("Falta examen médico");
+  // Si faltan, ya no cumple
+  if (!carnet || !examen) {
+    return { cumpleRequisitos: false, motivos };
+  }
 
   const carnetVigente = new Date(carnet.fechaVencimiento) >= hoy;
   const examenVigente = new Date(examen.fechaVencimiento) >= hoy;
 
-  return carnetVigente && examenVigente;
+  if (!carnetVigente) motivos.push("Carnet vencido");
+  if (!examenVigente) motivos.push("Examen médico vencido");
+
+  if (motivos.length > 0) {
+    return { cumpleRequisitos: false, motivos };
+  }
+
+   // Si llegó hasta acá, cumple con todo
+  return { cumpleRequisitos: true };
 };
 
 // --- Registrar chofer ---
 const registrarChofer = async (data) => {
   const { dni, idPersona } = data;
 
-  const estadoDoc = await verificarDocumentacion(data.idChofer);
-  const estadoDisponibilidad = estadoDoc ? "Libre" : "Inhabilitado";
-  
   //verifico que no se repita el dni
   const [existeDni] = await db.query(
     "SELECT * FROM Chofer WHERE dni = ?",
@@ -59,11 +74,23 @@ const registrarChofer = async (data) => {
   }
   
   const [result] = await db.query(
-    "INSERT INTO Chofer (dni, estadoDisponibilidad, idPersona) VALUES (?, ?, ?)",
-    [dni, estadoDisponibilidad, idPersona]
+    "INSERT INTO Chofer (dni, estadoDisponibilidad, idPersona) VALUES (?, 'Inhabilitado', ?)",
+    [dni, idPersona]
   );
 
-  return { idChofer: result.insertId, idPersona, estadoDisponibilidad };
+  const idChofer = result.insertId;
+
+  /*// Verificar documentación real del chofer
+  const estadoDoc = await verificarDocumentacion(data.idChofer);
+  const nuevoEstado = estadoDoc ? "Libre" : "Inhabilitado";
+
+  // actualizo su disponibilidad real
+  await db.query(
+    "UPDATE Chofer SET estadoDisponibilidad = ? WHERE idChofer = ?",
+    [nuevoEstado, idChofer]
+  );*/
+
+  return { idChofer, dni, idPersona };
 };
 
 // --- Modificar chofer ---
@@ -132,8 +159,10 @@ const eliminarChofer = async (idChofer) => {
 
 // --- Obtener todos los choferes ---
 const obtenerChoferes = async () => {
+  
+  
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+    SELECT c.idChofer, c.dni,
            p.nombre, p.apellido, p.cuit, p.telefono, p.idPersona
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -144,7 +173,7 @@ const obtenerChoferes = async () => {
 // --- Obtener un chofer ID---
 const obtenerPorId = async (idChofer) => {
   const [[row]] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+    SELECT c.idChofer, c.dni,
            p.nombre, p.apellido, p.cuit, p.telefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -200,7 +229,7 @@ const obtenerPorDni = async (dni) => {
 };
 */
 
-// --- Obtener choferes por nombre, apellido, DNI o estado ---
+// --- Obtener choferes por nombre, apellido, DNI ---
 const obtenerChoferesFiltrados = async (valor) => {
   // Verificamos si el valor es un número para buscar por DNI
   const esNumero = /^\d+$/.test(valor);
@@ -222,7 +251,18 @@ const obtenerChoferesFiltrados = async (valor) => {
 
 // --- Consultar historial de viajes ---
 const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
-  let query = "SELECT fecha, origen, destino, vehiculo, estado, gastos FROM Viaje WHERE idChofer = ?";
+  let query = `
+    SELECT 
+    v.fecha,
+    lo.nombre AS origen,
+    ld.nombre AS destino,
+    v.estado,
+    v.gastos
+    FROM Viaje v
+    INNER JOIN ChoferXVehiculo cv ON v.idChoferVehiculo = cv.idChoferVehiculo
+    INNER JOIN Localidad lo ON v.idLocalidadOrigen = lo.idLocalidad
+    INNER JOIN Localidad ld ON v.idLocalidadDestino = ld.idLocalidad
+    WHERE cv.idChofer = ?`;
   const params = [idChofer];
 
   if (desde) { query += " AND fecha >= ?"; params.push(desde); }
@@ -234,12 +274,36 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
 };
 
 // --- Consultar disponibilidad ---
-const consultarDisponibilidad = async (idChofer) => {
-  const [[chofer]] = await db.query(
-    "SELECT estadoDisponibilidad FROM Chofer WHERE idChofer = ?",
-    [idChofer]
-  );
-  return chofer ? chofer.estadoDisponibilidad : null;
+const consultarDisponibilidad = async (estado) => {
+  const choferes = await obtenerChoferes();
+  const resultado = [];
+
+  for (const chofer of choferes) {
+    const docStatus = await verificarDocumentacion(chofer.idChofer);
+    const estadoActualizado = docStatus.cumpleRequisitos
+      ? "Libre"
+      : "Inhabilitado";
+    await db.query(
+      "UPDATE Chofer SET estadoDisponibilidad = ? WHERE idChofer = ?",
+      [estadoActualizado, chofer.idChofer]
+    );
+
+    if (estadoActualizado === estado) {
+      resultado.push({
+        ...chofer,
+        estadoDisponibilidad: estadoActualizado,
+      });
+    }
+    }
+  return resultado;
+  /*const [rows] = await db.query(`
+    SELECT c.dni, c.estadoDisponibilidad,
+           p.nombre, p.apellido, p.telefono
+    FROM Chofer c
+    JOIN Persona p ON c.idPersona = p.idPersona
+    WHERE LOWER(c.estadoDisponibilidad) = LOWER(?)
+  `, [estado]);
+  return rows;*/
 };
 
 // --- Asignar vehiculo a chofer ---
@@ -250,17 +314,40 @@ const asignarVehiculo = async (idChofer, idVehiculo) => {
   );
   if (!vehiculo || vehiculo.estado !== "disponible") throw new Error("El vehículo no está disponible");
 
+  // Verificar que el chofer no esté ya ocupado
+  const [[chofer]] = await db.query(
+    "SELECT estadoDisponibilidad FROM Chofer WHERE idChofer = ?",
+    [idChofer]
+  );
+  if (!chofer) throw new Error("El chofer no existe");
+  if (chofer.estadoDisponibilidad !== "Libre")
+    throw new Error("El chofer no está disponible");
+
+  // Registrar la asignación en ChoferXVehiculo (si no existe)
   await db.query(
-    "UPDATE Vehiculo SET idChofer = ?, estado = 'asignado' WHERE idVehiculo = ?",
+    `INSERT INTO ChoferXVehiculo (idChofer, idVehiculo)
+     VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE idChoferVehiculo = idChoferVehiculo;`,
     [idChofer, idVehiculo]
   );
 
+  // Actualizar estado del vehículo y del chofer
+  await db.query(
+    "UPDATE Vehiculo SET estado = 'asignado' WHERE idVehiculo = ?",
+    [idVehiculo]
+  );
   await db.query(
     "UPDATE Chofer SET estadoDisponibilidad = 'Ocupado' WHERE idChofer = ?",
     [idChofer]
   );
 
-  return { idChofer, idVehiculo, asignado: true };
+    // Obtener el idChoferVehiculo recién creado
+  const [[registro]] = await db.query(
+    "SELECT idChoferVehiculo FROM ChoferXVehiculo WHERE idChofer = ? AND idVehiculo = ?",
+    [idChofer, idVehiculo]
+  );
+
+  return { idChofer, idVehiculo, idChoferVehiculo: registro.idChoferVehiculo, asignado: true };
 };
 
 module.exports = {
@@ -276,8 +363,3 @@ module.exports = {
   consultarDisponibilidad,
   asignarVehiculo
 };
-
-/*  obtenerPorNombre,
-  obtenerPorApellido,
-  obtenerPorEstado,
-  obtenerPorDni, */

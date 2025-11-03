@@ -14,7 +14,6 @@ const formatearFechaCorta = (fecha) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-
 // Obtener todas las documentaciones
 const obtenerTodas = async () => {
   const [rows] = await db.query('SELECT * FROM Documentacion');
@@ -52,7 +51,16 @@ const obtenerPorDetalle = async (detalle) => {
 
 // Crear nueva documentación
 const crear = async (data) => {
-  const { detalle, nombre, renovacion, fechaVencimiento, /*idVehiculo, idChofer*/ } = data;
+  const { detalle, nombre, renovacion, fechaVencimiento, idVehiculo, idChofer} = data;
+
+  //verifico que el Chofer ya esté registrado
+  const [existeChofer] = await db.query(
+    "SELECT * FROM Chofer WHERE idChofer = ?",
+    [idChofer]
+  );
+  if (existeChofer.length == 0) {
+    throw new Error("El idChofer ingresado no existe ");
+  }
 
   const renovacionInt = parseInt(renovacion, 10) || null;
   const idVehiculoInt = parseInt(idVehiculo, 10) || null;
@@ -60,15 +68,15 @@ const crear = async (data) => {
 
   const fechaNormalizada = normalizarFecha(fechaVencimiento);
   const [result] = await db.query(    
-    'INSERT INTO Documentacion (detalle, nombre, renovacion, fechaVencimiento, idChofer) VALUES (?, ?, ?, ?, ?)', //agregar idChofer e idVehículo
-    [detalle, nombre, renovacionInt, fechaVencimiento, idChoferInt]
+    'INSERT INTO Documentacion (detalle, nombre, renovacion, fechaVencimiento, idVehiculo, idChofer) VALUES (?, ?, ?, ?, ?, ?)',
+    [detalle, nombre, renovacionInt, fechaVencimiento, idVehiculoInt, idChoferInt]
   );
   return { id: result.insertId, ...data, fechaVencimiento: fechaNormalizada };
 };
 
 // Actualizar documentación
 const actualizar = async (id, data) => {
-  const { detalle, nombre, renovacion, fechaVencimiento } = data;
+  const { detalle, nombre, renovacion, fechaVencimiento, idVehiculo, idChofer } = data;
   
   const renovacionInt = parseInt(renovacion, 10) || null;
   const idVehiculoInt = parseInt(idVehiculo, 10) || null;
@@ -76,8 +84,8 @@ const actualizar = async (id, data) => {
   //si no viene fecha de vencimiento queda el valor que estaba
   const fechaNormalizada = fechaVencimiento ? normalizarFecha(fechaVencimiento) : resultado.fechaVencimiento;
   await db.query(
-    'UPDATE Documentacion SET detalle = ?, nombre = ?, renovacion = ?, fechaVencimiento = ?, idChofer = ?, WHERE idDocumentacion = ?',//agregar idChofer e idVehículo
-    [detalle, nombre, renovacionInt, fechaNormalizada, idChoferInt, id]
+    'UPDATE Documentacion SET detalle = ?, nombre = ?, renovacion = ?, fechaVencimiento = ?, idVehiculo = ?, idChofer = ? WHERE idDocumentacion = ?',//agregar idChofer e idVehículo
+    [detalle, nombre, renovacionInt, fechaNormalizada, idVehiculoInt, idChoferInt, id]
   );
 
 

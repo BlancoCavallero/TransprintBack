@@ -70,25 +70,25 @@ const actualizarCliente = async (id, cliente) => {
   //Verifico que el cliente exista
   const [clienteExistente] = await db.query(
     "SELECT * FROM Cliente WHERE idCliente = ?",
-    [idCliente]
+    [id]
   );
   if (clienteExistente.length === 0) {
     throw new Error("El cliente no existe");
   }
 
-  //verifico que no se repita el dni
+  /*//verifico que no se repita el dni
   const [existeDni] = await db.query(
     "SELECT * FROM Cliente WHERE dni = ?  AND idCliente != ?",
     [dni, idCliente]
   );
   if (existeDni.length > 0) {
     throw new Error("Ya existe un cliente registrado con ese DNI");
-  } 
+  } */
 
   //verifico que el idPersona no esté usado en otro cliente
   const [existe] = await db.query(
-    "SELECT * FROM Cliente WHERE idPersona = ?",
-    [idPersona]
+  "SELECT * FROM Cliente WHERE idPersona = ? AND idCliente != ?",
+  [idPersona, id]  // <-- ignoramos el cliente actual
   );
   if (existe.length > 0) {
     throw new Error("Ya existe un cliente registrado con ese idPersona");
@@ -108,7 +108,7 @@ const actualizarCliente = async (id, cliente) => {
     [codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad, id]
   );
 
-  return { idCliente, actualizado: true };
+  return { id, actualizado: true };
 };
 
 const eliminarCliente = async (id) => {

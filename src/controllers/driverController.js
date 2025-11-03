@@ -115,10 +115,13 @@ const consultarHistorial = async (req, res, next) => {
 };
 
 // --- Consultar disponibilidad ---
-const consultarDisponibilidad = async (req, res, next) => {
+const consultarChoferesDisponibilidad = async (req, res, next) => {
   try {
-    const estado = await driverService.consultarDisponibilidad(req.params.id);
-    successResponse(res, { estadoDisponibilidad: estado }, "Disponibilidad consultada");
+    const { estado } = req.params;
+    const resultado = await driverService.consultarDisponibilidad(estado);
+    
+    // Devuelve los choferes filtrados según el estado solicitado
+    successResponse(res, { estadoDisponibilidad: resultado }, "Disponibilidad consultada");
   } catch (error) {
     next(error);
   }
@@ -128,7 +131,9 @@ const consultarDisponibilidad = async (req, res, next) => {
 const asignarVehiculo = async (req, res, next) => {
   try {
     const { idVehiculo } = req.body;
-    const resultado = await driverService.asignarVehiculo(req.params.id, idVehiculo);
+    const idChofer = req.params.id;
+
+    const resultado = await driverService.asignarVehiculo(idChofer, idVehiculo);
     successResponse(res, resultado, "Vehículo asignado correctamente");
   } catch (error) {
     next(error);
@@ -142,14 +147,8 @@ module.exports = {
   eliminarChofer,
   obtenerChoferes,
   obtenerChoferId,
-
   obtenerChoferesFiltradosController,
   consultarHistorial,
-  consultarDisponibilidad,
+  consultarChoferesDisponibilidad,
   asignarVehiculo
 };
-
-/*  obtenerChoferApellido,
-  obtenerChoferNombre,
-  obtenerChoferEstado,
-  obtenerChoferDni,*/

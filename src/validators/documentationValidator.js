@@ -24,10 +24,10 @@ const validarDocumentacion = [
     .isISO8601().withMessage("Ingrese una fecha válida (YYYY-MM-DD)"),
 
   // idVehiculo: puede venir vacío, pero si viene debe ser un número entero positivo
-  body("idVehiculo")
+  /*body("idVehiculo")
     .optional({ values: "falsy" })
     .isInt({ min: 1 }).withMessage("El idVehiculo debe ser un número entero positivo"),
-
+*/
   // idChofer: igual que idVehiculo, opcional pero válido si viene
   body("idChofer")
     .optional({ values: "falsy" })
