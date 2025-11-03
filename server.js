@@ -8,6 +8,7 @@ const clientRoutes = require('./src/routes/clients');
 const personRoutes = require('./src/routes/persons');
 const documentationRoutes = require('./src/routes/documentations');
 const driverRoutes = require('./src/routes/drivers');
+const vehiculosRoutes = require("./src/routes/vehiculos");
 
 const errorHandler = require("./src/middlewares/errorHandler");
 
@@ -26,6 +27,8 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/persons', personRoutes);
 app.use('/api/documentations', documentationRoutes);
 app.use('/api/drivers', driverRoutes);
+app.use("/api/vehiculos", vehiculosRoutes);
+
 // Middleware global de errores
 app.use(errorHandler);
 
