@@ -1,12 +1,20 @@
 const express = require("express");
-const vehiculoController = require("../controllers/vehiculoController");
-
 const router = express.Router();
 
+const vehiculoController = require("../controllers/vehiculoController");
+const { validarCreacionVehiculo, validarActualizacionVehiculo } = require("../validators/vehiculoValidator");
+const validarResultado = require("../middlewares/validarResultado");
+
+// Obtener todos o filtrar
 router.get("/", vehiculoController.obtenerVehiculos);
-router.get("/:id", vehiculoController.obtenerVehiculoPorId);
-router.post("/", vehiculoController.crearVehiculo);
-router.put("/:id", vehiculoController.actualizarVehiculo);
+
+// Registrar vehículo nuevo (valida campos)
+router.post("/", validarCreacionVehiculo, validarResultado, vehiculoController.crearVehiculo);
+
+// Actualizar vehículo existente (valida campos)
+router.put("/:id", validarActualizacionVehiculo, validarResultado, vehiculoController.actualizarVehiculo);
+
+// Eliminar vehículo
 router.delete("/:id", vehiculoController.eliminarVehiculo);
 
 module.exports = router;

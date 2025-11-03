@@ -18,11 +18,11 @@ app.use('/api/users', userRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/persons', personaRoutes);
 
-// Middleware global de errores
-app.use(errorHandler);
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 const vehiculosRoutes = require("./src/routes/vehiculos");
 app.use("/api/vehiculos", vehiculosRoutes);
+
+// Middleware global de errores
+app.use(errorHandler);
