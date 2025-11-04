@@ -3,8 +3,8 @@ const db = require("../config/db");
 
 const GEORREF_BASE = "https://apis.datos.gob.ar/georef/api";
 
-// ✅ Obtiene o crea provincia y localidad bajo demanda
-const obtenerOCrearLocalidad = async (nombreProvincia, nombreLocalidad) => {
+// ✅ Crear localidad solo si existe en la API Georef
+const obtenerOCrearLocalidad = async (nombreProvincia, nombreLocalidad, codPostal = null) => {
   if (!nombreProvincia || !nombreLocalidad) {
     const error = new Error("Provincia y localidad son obligatorias");
     error.status = 400;
@@ -14,24 +14,32 @@ const obtenerOCrearLocalidad = async (nombreProvincia, nombreLocalidad) => {
   const provincia = nombreProvincia.trim();
   const localidad = nombreLocalidad.trim();
 
-  // 1️⃣ Buscar provincia en DB
+  // 1️⃣ Buscar provincia en DB o crearla desde la API
   let [rows] = await db.query("SELECT idProvincia FROM Provincia WHERE nombre = ?", [provincia]);
   let idProvincia;
+
   if (rows.length > 0) {
     idProvincia = rows[0].idProvincia;
   } else {
-    // Buscar en API Georef
-    const { data: dataProv } = await axios.get(`${GEORREF_BASE}/provincias?nombre=${encodeURIComponent(provincia)}`);
+    const { data: dataProv } = await axios.get(
+      `${GEORREF_BASE}/provincias?nombre=${encodeURIComponent(provincia)}`
+    );
     const provinciaApi = dataProv.provincias[0];
-    if (!provinciaApi) throw new Error(`Provincia '${provincia}' no encontrada en la API`);
-
-    // Insertar en DB
+    if (!provinciaApi) {
+      const error = new Error(`Provincia '${provincia}' no encontrada en la API Georef`);
+      error.status = 404;
+      throw error;
+    }
     const [resProv] = await db.query("INSERT INTO Provincia (nombre) VALUES (?)", [provinciaApi.nombre]);
     idProvincia = resProv.insertId;
   }
 
   // 2️⃣ Buscar localidad en DB
-  [rows] = await db.query("SELECT idLocalidad FROM Localidad WHERE nombre = ? AND idProvincia = ?", [localidad, idProvincia]);
+  [rows] = await db.query(
+    "SELECT idLocalidad, codPostal FROM Localidad WHERE nombre = ? AND idProvincia = ?",
+    [localidad, idProvincia]
+  );
+
   if (rows.length > 0) {
     return { idLocalidad: rows[0].idLocalidad, idProvincia, fuente: "db" };
   }
@@ -42,26 +50,42 @@ const obtenerOCrearLocalidad = async (nombreProvincia, nombreLocalidad) => {
   );
 
   const locApi = dataLoc.localidades[0];
-
-  // 4️⃣ Si la API no la encuentra, crear registro manual
   if (!locApi) {
-    const [resLoc] = await db.query(
-      "INSERT INTO Localidad (nombre, idProvincia) VALUES (?, ?)",
-      [localidad, idProvincia]
+    const error = new Error(
+      `La localidad '${localidad}' no existe en la API Georef y no puede cargarse manualmente`
     );
-    return { idLocalidad: resLoc.insertId, idProvincia, fuente: "manual" };
+    error.status = 400;
+    throw error;
   }
 
-  // 5️⃣ Insertar localidad obtenida desde API
+  // 4️⃣ Insertar localidad validada en la DB
   const [resLoc] = await db.query(
     "INSERT INTO Localidad (nombre, codPostal, idProvincia) VALUES (?, ?, ?)",
-    [locApi.nombre, locApi.codigo_postal || null, idProvincia]
+    [locApi.nombre, codPostal || null, idProvincia]
   );
 
   return { idLocalidad: resLoc.insertId, idProvincia, fuente: "georef" };
 };
 
-// ✅ Buscar localidades ya guardadas (filtro opcional)
+// ✅ Actualizar código postal
+const actualizarCodigoPostal = async (idLocalidad, nuevoCodigo) => {
+  if (!idLocalidad || nuevoCodigo == null) {
+    const error = new Error("ID de localidad y nuevo código postal son obligatorios");
+    error.status = 400;
+    throw error;
+  }
+
+  const [rows] = await db.query("SELECT idLocalidad FROM Localidad WHERE idLocalidad = ?", [idLocalidad]);
+  if (rows.length === 0) {
+    const error = new Error("La localidad especificada no existe");
+    error.status = 404;
+    throw error;
+  }
+
+  await db.query("UPDATE Localidad SET codPostal = ? WHERE idLocalidad = ?", [nuevoCodigo, idLocalidad]);
+  return { idLocalidad, codPostal: nuevoCodigo, mensaje: "Código postal actualizado correctamente" };
+};
+
 const obtenerLocalidades = async (filtros = {}) => {
   let query = `
     SELECT l.idLocalidad, l.nombre AS localidad, l.codPostal, 
@@ -72,18 +96,27 @@ const obtenerLocalidades = async (filtros = {}) => {
   `;
   const params = [];
 
+  // 🔍 Filtrar por provincia
   if (filtros.provincia) {
     query += " AND p.nombre LIKE ?";
     params.push(`%${filtros.provincia}%`);
   }
 
-  if (filtros.nombre) {
+  // 🔍 Filtrar por nombre o localidad (ambos funcionan igual)
+  if (filtros.nombre || filtros.localidad) {
+    const valor = filtros.nombre || filtros.localidad;
     query += " AND l.nombre LIKE ?";
-    params.push(`%${filtros.nombre}%`);
+    params.push(`%${valor}%`);
+  }
+
+  // 🔍 Filtrar por código postal exacto
+  if (filtros.codPostal) {
+    query += " AND l.codPostal = ?";
+    params.push(filtros.codPostal);
   }
 
   const [rows] = await db.query(query, params);
   return rows;
 };
 
-module.exports = { obtenerOCrearLocalidad, obtenerLocalidades };
+module.exports = { obtenerOCrearLocalidad, obtenerLocalidades, actualizarCodigoPostal };
