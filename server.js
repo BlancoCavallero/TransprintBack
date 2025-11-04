@@ -9,6 +9,8 @@ const personRoutes = require('./src/routes/persons');
 const documentationRoutes = require('./src/routes/documentations');
 const driverRoutes = require('./src/routes/drivers');
 const vehiculosRoutes = require("./src/routes/vehiculos");
+const localidadRoutes = require("./src/routes/localidades");
+const viajesRoutes = require("./src/routes/viajes");
 
 const errorHandler = require("./src/middlewares/errorHandler");
 
@@ -28,18 +30,9 @@ app.use('/api/persons', personRoutes);
 app.use('/api/documentations', documentationRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use("/api/vehiculos", vehiculosRoutes);
-
-const localidadRoutes = require("./src/routes/localidades");
 app.use("/api/localidades", localidadRoutes);
-
-
-
-
-const vehiculosRoutes = require("./src/routes/vehiculos");
-app.use("/api/vehiculos", vehiculosRoutes);
-
-const viajesRoutes = require("./src/routes/viajes");
 app.use("/viajes", viajesRoutes);
+
 
 // Middleware global de errores
 app.use(errorHandler);
