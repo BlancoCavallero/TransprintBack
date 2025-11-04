@@ -29,6 +29,9 @@ app.use('/api/documentations', documentationRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use("/api/vehiculos", vehiculosRoutes);
 
+const localidadRoutes = require("./src/routes/localidades");
+app.use("/api/localidades", localidadRoutes);
+
 // Middleware global de errores
 app.use(errorHandler);
 
