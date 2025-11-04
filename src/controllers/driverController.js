@@ -1,5 +1,5 @@
 const driverService = require("../services/driverService");
-const { successResponse } = require("../utils/response");
+const { successResponse, errorResponse } = require("../utils/response");
 
 const registrarChofer = async (req, res, next) => {
   try {
@@ -30,35 +30,111 @@ const eliminarChofer = async (req, res, next) => {
 
 const obtenerChoferes = async (req, res, next) => {
   try {
-    const choferes = await driverService.obtenerChoferes(req.query);
-    successResponse(res, choferes, "Búsqueda realizada");
+    const choferes = await driverService.obtenerChoferes();
+    successResponse(res, choferes);
   } catch (error) {
     next(error);
   }
 };
 
+const obtenerChoferId = async (req, res, next) => {
+  try {
+    const chofer = await driverService.obtenerPorId(req.params.id);
+    if (!chofer) return errorResponse(res, "Chofer no encontrado", 404);
+    successResponse(res, chofer);
+  } catch (error) {
+    next(error);
+  }
+};
+/*
+const obtenerChoferNombre = async (req, res, next) => {
+  try {
+    const choferes = await driverService.obtenerPorNombre(req.params.nombre);
+    if (!choferes) return errorResponse(res, "Chofer no encontrado", 404);
+    successResponse(res, choferes);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerChoferApellido = async (req, res, next) => {
+  try {
+    const choferes = await driverService.obtenerPorApellido(req.params.apellido);
+    if (!choferes) return errorResponse(res, "Chofer no encontrado", 404);
+    successResponse(res, choferes);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerChoferEstado = async (req, res, next) => {
+  try {
+    const choferes = await driverService.obtenerPorEstado(req.params.estado);
+    if (!choferes) return errorResponse(res, "Chofer no encontrado", 404);
+    successResponse(res, choferes);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerChoferDni = async (req, res, next) => {
+  try {
+    const choferes = await driverService.obtenerPorDni(req.params.dni);
+    if (!choferes) return errorResponse(res, "Chofer no encontrado", 404);
+    successResponse(res, choferes);
+  } catch (error) {
+    next(error);
+  }
+};
+*/
+
+const obtenerChoferesFiltradosController = async (req, res) => {
+  try {
+    const { valor } = req.params;
+    const choferes = await driverService.obtenerChoferesFiltrados(valor);
+
+    if (!choferes.length) {
+      return res.status(404).json({ mensaje: "No se encontraron choferes" });
+    }
+
+    res.json(choferes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// --- Consultar historial de viajes ---
 const consultarHistorial = async (req, res, next) => {
   try {
-    const historial = await driverService.consultarHistorial(req.params.id, req.query);
+    const { desde, hasta, estado } = req.query;
+    const historial = await driverService.consultarHistorial(req.params.id, { desde, hasta, estado });
     successResponse(res, historial, "Historial de viajes obtenido");
   } catch (error) {
     next(error);
   }
 };
 
-const consultarDisponibilidad = async (req, res, next) => {
+// --- Consultar disponibilidad ---
+const consultarChoferesDisponibilidad = async (req, res, next) => {
   try {
-    const disponibilidad = await driverService.consultarDisponibilidad(req.params.id);
-    successResponse(res, disponibilidad, "Disponibilidad consultada");
+    const { estado } = req.params;
+    const resultado = await driverService.consultarDisponibilidad(estado);
+    
+    // Devuelve los choferes filtrados según el estado solicitado
+    successResponse(res, { estadoDisponibilidad: resultado }, "Disponibilidad consultada");
   } catch (error) {
     next(error);
   }
 };
 
-const asignarCamion = async (req, res, next) => {
+// --- Asignar Vehículo ---
+const asignarVehiculo = async (req, res, next) => {
   try {
-    const asignacion = await driverService.asignarCamion(req.params.id, req.body.idCamion);
-    successResponse(res, asignacion, "Camión asignado correctamente");
+    const { idVehiculo } = req.body;
+    const idChofer = req.params.id;
+
+    const resultado = await driverService.asignarVehiculo(idChofer, idVehiculo);
+    successResponse(res, resultado, "Vehículo asignado correctamente");
   } catch (error) {
     next(error);
   }
@@ -69,8 +145,10 @@ module.exports = {
   registrarChofer,
   modificarChofer,
   eliminarChofer,
-  obtenerChoferes, 
+  obtenerChoferes,
+  obtenerChoferId,
+  obtenerChoferesFiltradosController,
   consultarHistorial,
-  consultarDisponibilidad,
-  asignarCamion,
+  consultarChoferesDisponibilidad,
+  asignarVehiculo
 };

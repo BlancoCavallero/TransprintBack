@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Persona` (
   `idPersona` INT NOT NULL AUTO_INCREMENT,
   `nombre` VARCHAR(45) NULL,
   `apellido` VARCHAR(45) NULL,
-  `cuit` INT(12) NULL,
+  `cuit` bigint NOT NULL,
   `telefono` INT(30) NULL,
   PRIMARY KEY (`idPersona`),
   UNIQUE INDEX `idPersona_UNIQUE` (`idPersona` ASC) VISIBLE)
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Cliente` (
   `observaciones` VARCHAR(45) NULL,
   `razonSocial` VARCHAR(45) NULL,
   `tipo` VARCHAR(45) NULL,
-  `idPersona` INT NULL,
+  `idPersona` INT NOT NULL, -- VUELVO A PONERLO EN NOT NULL
   `idLocalidad` INT NULL,
   PRIMARY KEY (`idCliente`),
   UNIQUE INDEX `idCliente_UNIQUE` (`idCliente` ASC) VISIBLE,
@@ -217,9 +217,9 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Documentacion` (
   `idDocumentacion` INT NOT NULL AUTO_INCREMENT,
-  `detalle` VARCHAR(45) NULL,
-  `estado` VARCHAR(45) NULL,
-  `nombre` VARCHAR(100) NULL,
+  `detalle` VARCHAR(100) NULL,
+  `estado` ENUM('Vigente','Vencida') NULL,
+  `nombre` VARCHAR(45) NULL,
   `renovacion` INT NULL,
   `fechaVencimiento` DATE NULL,
   `idVehiculo` INT NULL,
@@ -264,12 +264,12 @@ ENGINE = InnoDB;
 -- Table `mydb`.`Mantenimiento`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Mantenimiento` (
-  `idMantenimiento` INT NOT NULL,
+  `idMantenimiento` INT NOT NULL AUTO_INCREMENT, -- ¡Agregado AUTO_INCREMENT!
   `fecha` DATE NULL,
-  `observaciones` VARCHAR(45) NULL,
+  `observaciones` VARCHAR(255) NULL, -- Más espacio para observaciones
   `tipo` VARCHAR(45) NULL,
   `idVehiculo` INT NOT NULL,
-  PRIMARY KEY (`idMantenimiento`, `idVehiculo`),
+  PRIMARY KEY (`idMantenimiento`),
   INDEX `fk_Mantenimiento_Vehiculo1_idx` (`idVehiculo` ASC) VISIBLE,
   CONSTRAINT `fk_Mantenimiento_Vehiculo1`
     FOREIGN KEY (`idVehiculo`)
