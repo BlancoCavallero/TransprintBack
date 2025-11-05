@@ -312,7 +312,7 @@ const asignarVehiculo = async (idChofer, idVehiculo) => {
     "SELECT estado FROM Vehiculo WHERE idVehiculo = ?",
     [idVehiculo]
   );
-  if (!vehiculo || vehiculo.estado !== "disponible") throw new Error("El vehículo no está disponible");
+  if (!vehiculo || vehiculo.estado !== "activo") throw new Error("El vehículo no está disponible");
 
   // Verificar que el chofer no esté ya ocupado
   const [[chofer]] = await db.query(
