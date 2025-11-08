@@ -24,7 +24,7 @@ const obtenerGastosPorId = async (req, res, next) =>{
 
 const crear = async (req, res, next) => {
     try {
-        const gasto = expenseService.crear(req.body)
+        const gasto = await expenseService.crear(req.body)
         successResponse(res, gasto, "Gasto registrado correctamente");
     } catch (error) {
         next(error);
