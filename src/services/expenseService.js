@@ -10,6 +10,10 @@ const obtenerPorId = async (id) => {
   return rows[0];
 }
 
+const obtenerPorIdViaje = async (id) => {
+  const [rows] = await db.query("SELECT * FROM Gasto WHERE idViaje = ?", [id]);
+  return rows;
+}
 
 
 const crear = async (gasto) => {
@@ -61,6 +65,7 @@ const eliminar = async (id) => {
 module.exports = {
     obtenerGastos,
     obtenerPorId,
+    obtenerPorIdViaje,
     crear,
     modificarGasto,
     eliminar

@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.get("/", expenseController.obtenerGastos);
 router.get("/:id", expenseController.obtenerGastosPorId);
+router.get("/viaje/:idViaje", expenseController.obtenerGastosPorViaje);
 router.post("/", validarGasto, validarResultado, expenseController.crear);
 router.put("/:id", validarGasto, validarResultado, expenseController.modificar);
 router.delete("/:id", expenseController.eliminar);

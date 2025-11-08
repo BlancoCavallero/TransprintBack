@@ -22,6 +22,17 @@ const obtenerGastosPorId = async (req, res, next) =>{
 
 }
 
+const obtenerGastosPorViaje = async (req, res, next) =>{
+    try {
+        const gastos = await expenseService.obtenerPorIdViaje(req.params.idViaje);
+        if (gastos.length == 0) return errorResponse(res, "No se encontraron gastos para este viaje", 404);
+        successResponse(res, gastos);
+    } catch (error) {
+        next(error);
+    }
+
+}
+
 const crear = async (req, res, next) => {
     try {
         const gasto = await expenseService.crear(req.body)
@@ -52,6 +63,7 @@ const eliminar = async (req, res, next) => {
 module.exports = {
     obtenerGastos,
     obtenerGastosPorId,
+    obtenerGastosPorViaje,
     crear,
     modificar,
     eliminar
