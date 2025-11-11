@@ -4,7 +4,7 @@ const validarGasto = [
   body("detalle")
     .notEmpty().withMessage("El detalle es obligatorio")
     .isString().withMessage("El detalle debe ser texto")
-    .isLength({ max: 45 }).withMessage("El detalle no puede superar los 45 caracteres"),
+    .isLength({ max: 255 }).withMessage("El detalle no puede superar los 255 caracteres"),
 
   body("monto")
     .notEmpty().withMessage("El monto es obligatorio")

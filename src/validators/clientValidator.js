@@ -18,11 +18,11 @@ const validarCliente = [
     .withMessage("El tipo de cliente debe ser 'Productor' o 'Empresa'"),
 
   body("idPersona")
-    .optional()
+    .notEmpty().withMessage("El idPersona es obligatorio")
     .isNumeric().withMessage("El ID de persona debe ser numérico"),
 
   body("idLocalidad")
-    .optional()
+    .notEmpty().withMessage("El idLocalidad es obligatorio")
     .isNumeric().withMessage("El ID de localidad debe ser numérico"),
 ];
 

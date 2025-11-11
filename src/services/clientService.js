@@ -59,7 +59,7 @@ const crearCliente = async (cliente) => {
   
   const [result] = await db.query(
     "INSERT INTO Cliente (codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [codPostal, correo, observaciones || null, razonSocial, tipo, idPersona, idLocalidad || null]
+    [codPostal, correo, observaciones || null, razonSocial, tipo, idPersona, idLocalidad]
   );
 
   return { idCliente: result.insertId, codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad};

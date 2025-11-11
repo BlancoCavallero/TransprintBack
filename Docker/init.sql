@@ -197,7 +197,7 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Gasto` (
   `idGasto` INT NOT NULL AUTO_INCREMENT,
-  `detalle` VARCHAR(45) NULL,
+  `detalle` VARCHAR(255) NULL,
   `monto` FLOAT NULL,
   `tipo` VARCHAR(45) NULL,
   `idViaje` INT NOT NULL,

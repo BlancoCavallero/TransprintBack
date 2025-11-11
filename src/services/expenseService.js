@@ -57,8 +57,8 @@ const modificarGasto = async (id, gasto) => {
 };
 
 const eliminar = async (id) => {
-  await db.query("DELETE FROM Gasto WHERE idPersona = ?", [id]);
-  return { message: "Persona eliminada correctamente" };
+  await db.query("DELETE FROM Gasto WHERE idGasto = ?", [id]);
+  return { message: "Gasto eliminado correctamente" };
 };
 
 
