@@ -56,10 +56,19 @@ const crearCliente = async (cliente) => {
   if (existePersona.length == 0) {
     throw new Error("El idPersona ingresado no existe ");
   }
+
+    //verifico que la localidad ya esté registrada
+  const [existeLocalidad] = await db.query(
+    "SELECT * FROM Localidad WHERE idLocalidad = ?",
+    [idLocalidad]
+  );
+  if (existeLocalidad.length === 0) {
+    throw new Error("El idLocalidad ingresado no existe ");
+  }
   
   const [result] = await db.query(
     "INSERT INTO Cliente (codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [codPostal, correo, observaciones || null, razonSocial, tipo, idPersona, idLocalidad || null]
+    [codPostal, correo, observaciones || null, razonSocial, tipo, idPersona, idLocalidad]
   );
 
   return { idCliente: result.insertId, codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad};
@@ -101,6 +110,15 @@ const actualizarCliente = async (id, cliente) => {
   );
   if (existePersona.length === 0) {
     throw new Error("El idPersona ingresado no existe ");
+  }
+
+  //verifico que la localidad ya esté registrada
+  const [existeLocalidad] = await db.query(
+    "SELECT * FROM Localidad WHERE idLocalidad = ?",
+    [idLocalidad]
+  );
+  if (existeLocalidad.length === 0) {
+    throw new Error("El idLocalidad ingresado no existe ");
   }
 
   await db.query(
