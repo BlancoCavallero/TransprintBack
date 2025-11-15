@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Cliente` (
   `razonSocial` VARCHAR(45) NULL,
   `tipo` VARCHAR(45) NULL,
   `idPersona` INT NOT NULL, -- VUELVO A PONERLO EN NOT NULL
-  `idLocalidad` INT NULL,
+  `idLocalidad` INT NOT NULL,
   PRIMARY KEY (`idCliente`),
   UNIQUE INDEX `idCliente_UNIQUE` (`idCliente` ASC) VISIBLE,
   INDEX `fk_Cliente_Persona1_idx` (`idPersona` ASC) VISIBLE,
