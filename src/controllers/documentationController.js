@@ -1,7 +1,7 @@
 const documentationService = require('../services/documentationService');
 const { successResponse, errorResponse } = require("../utils/response");
 
-const obtenerTodas = async (req, res) => {
+const obtenerTodas = async (req, res, next) => {
   try {
     const docs = await documentationService.obtenerTodas();
     successResponse(res, docs);
