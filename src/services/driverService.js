@@ -20,8 +20,8 @@ const verificarDocumentacion = async (idChofer) => {
   const examenes = documentos.filter(d => d.nombre.toLowerCase().includes("examen"));
 
 
-  const motivos = [];
- if (carnets.length === 0) motivos.push("Falta carnet");
+  const motivos = []; //no iria mas arriba en la linea 13?
+  if (carnets.length === 0) motivos.push("Falta carnet");
   if (examenes.length === 0) motivos.push("Falta examen médico");
 
   if (motivos.length > 0) {
@@ -32,7 +32,7 @@ const verificarDocumentacion = async (idChofer) => {
   const carnetVigente = carnets.some(c => new Date(c.fechaVencimiento) >= hoy);
   const examenVigente = examenes.some(e => new Date(e.fechaVencimiento) >= hoy);
 
-    if (!carnetVigente) motivos.push("Carnet vencido");
+  if (!carnetVigente) motivos.push("Carnet vencido");
   if (!examenVigente) motivos.push("Examen médico vencido");
 
   if (motivos.length > 0) {
@@ -40,6 +40,28 @@ const verificarDocumentacion = async (idChofer) => {
   }
   
   return { cumpleRequisitos: true, motivos: ["Documentación completa y vigente"] };
+};
+
+const verificarViajeActivo = async (idChofer) => {
+  const [viajes] = await db.query(`
+    SELECT v.idViaje, v.estado
+    FROM Viaje v
+    JOIN ChoferXVehiculo cxv ON v.idChoferVehiculo = cxv.idChoferVehiculo
+    WHERE cxv.idChofer = ?
+  `, [idChofer]);
+
+  // Si no tiene viajes → NO está ocupado
+  if (viajes.length === 0) {
+    return { activo: false };
+  }
+
+  // Buscar si alguno está en estado "activo"
+  const viajeActivo = viajes.some(v => v.estado.toLowerCase() === "activo");
+
+  return {
+    activo: viajeActivo,
+    motivos: viajeActivo ? ["El chofer está en viaje"] : []
+  };
 };
 
 // --- Registrar chofer ---
@@ -297,10 +319,19 @@ const consultarDisponibilidad = async (estado) => {
 
   for (const chofer of choferes) {
     const docStatus = await verificarDocumentacion(chofer.idChofer);
+    const viajeStatus = await verificarViajeActivo(chofer.idChofer);
+
+    let estadoActualizado;
+
+    if (viajeStatus.activo) {
+      estadoActualizado = "Ocupado";
+    } else if (docStatus.cumpleRequisitos) {
+      estadoActualizado = "Libre";
+    } else {
+      estadoActualizado = "Inhabilitado";
+    }
+
     
-    const estadoActualizado = docStatus.cumpleRequisitos
-      ? "Libre"
-      : "Inhabilitado";
     
     // Actualizar en base de datos
     await db.query(
@@ -313,7 +344,10 @@ const consultarDisponibilidad = async (estado) => {
       resultado.push({
         ...chofer,
         estadoDisponibilidad: estadoActualizado,
-        motivos: docStatus.motivos || []  // opcional: te devuelve motivos si está inhabilitado
+        motivos: [
+          ...(docStatus.motivos || []),
+          ...(viajeStatus.motivos || [])
+        ]
       });
     }
     }
