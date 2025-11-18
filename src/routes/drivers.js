@@ -19,8 +19,7 @@ router.post("/", validarChofer, validarResultado, driverController.registrarChof
 router.put("/:id", validarChofer, validarResultado, driverController.modificarChofer);
 router.delete("/:id", driverController.eliminarChofer);
 
-router.get("/:id/historial", driverController.consultarHistorial);
-//router.get("/:id/disponibilidad", driverController.consultarDisponibilidad); //y esto?
+router.get("/:id/historial", driverController.consultarHistorial);// probar en postman
 router.post("/:id/asignar-camion", driverController.asignarVehiculo);
 
 module.exports = router;

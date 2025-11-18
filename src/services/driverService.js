@@ -14,32 +14,32 @@ const verificarDocumentacion = async (idChofer) => {
   if (!documentos.length) {
     return { cumpleRequisitos: false, motivos: ["No tiene documentación cargada"] };
   }
-/*  if (!documentos.length) return false;*/
 
-  // Buscar carnet y examen médico, por ejemplo
-  const carnet = documentos.find((d) => d.nombre.toLowerCase().includes("carnet"));
-  const examen = documentos.find((d) => d.nombre.toLowerCase().includes("examen"));
+ // Filtrar todos los carnets y exámenes
+  const carnets = documentos.filter(d => d.nombre.toLowerCase().includes("carnet"));
+  const examenes = documentos.filter(d => d.nombre.toLowerCase().includes("examen"));
+
 
   const motivos = [];
-  if (!carnet) motivos.push("Falta carnet");
-  if (!examen) motivos.push("Falta examen médico");
-  // Si faltan, ya no cumple
-  if (!carnet || !examen) {
-    return { cumpleRequisitos: false, motivos };
-  }
-
-  const carnetVigente = new Date(carnet.fechaVencimiento) >= hoy;
-  const examenVigente = new Date(examen.fechaVencimiento) >= hoy;
-
-  if (!carnetVigente) motivos.push("Carnet vencido");
-  if (!examenVigente) motivos.push("Examen médico vencido");
+ if (carnets.length === 0) motivos.push("Falta carnet");
+  if (examenes.length === 0) motivos.push("Falta examen médico");
 
   if (motivos.length > 0) {
     return { cumpleRequisitos: false, motivos };
   }
 
-   // Si llegó hasta acá, cumple con todo
-  return { cumpleRequisitos: true };
+   // Ver si AL MENOS UNO de cada tipo está vigente
+  const carnetVigente = carnets.some(c => new Date(c.fechaVencimiento) >= hoy);
+  const examenVigente = examenes.some(e => new Date(e.fechaVencimiento) >= hoy);
+
+    if (!carnetVigente) motivos.push("Carnet vencido");
+  if (!examenVigente) motivos.push("Examen médico vencido");
+
+  if (motivos.length > 0) {
+    return { cumpleRequisitos: false, motivos };
+  }
+  
+  return { cumpleRequisitos: true, motivos: ["Documentación completa y vigente"] };
 };
 
 // --- Registrar chofer ---
@@ -182,6 +182,23 @@ const obtenerPorId = async (idChofer) => {
   return row;
 };
 
+const obtenerChoferesCompleto = async () => {
+  const [rows] = await db.query(`
+    SELECT DISTINCT
+      c.idChofer,
+      c.estadoDisponibilidad,
+      p.idPersona,
+      p.nombre,
+      p.apellido,
+      p.telefono
+    FROM Chofer c
+    JOIN Persona p ON c.idPersona = p.idPersona
+    LEFT JOIN Documentacion d ON c.idChofer = d.idChofer
+  `);
+
+  return rows;
+};
+
 /*
 // --- Obtener un chofer por nombre---
 const obtenerPorNombre = async (nombre) => {
@@ -275,23 +292,28 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
 
 // --- Consultar disponibilidad ---
 const consultarDisponibilidad = async (estado) => {
-  const choferes = await obtenerChoferes();
+  const choferes = await obtenerChoferesCompleto();
   const resultado = [];
 
   for (const chofer of choferes) {
     const docStatus = await verificarDocumentacion(chofer.idChofer);
+    
     const estadoActualizado = docStatus.cumpleRequisitos
       ? "Libre"
       : "Inhabilitado";
+    
+    // Actualizar en base de datos
     await db.query(
       "UPDATE Chofer SET estadoDisponibilidad = ? WHERE idChofer = ?",
       [estadoActualizado, chofer.idChofer]
     );
 
-    if (estadoActualizado === estado) {
+// Filtrar por estado pedido
+    if (estadoActualizado.toLowerCase() === estado.toLowerCase()) {
       resultado.push({
         ...chofer,
         estadoDisponibilidad: estadoActualizado,
+        motivos: docStatus.motivos || []  // opcional: te devuelve motivos si está inhabilitado
       });
     }
     }
