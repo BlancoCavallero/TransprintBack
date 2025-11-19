@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-// Importamos el controlador que acabamos de crear
 const mantenimientoController = require('../controllers/mantenimientoController');
 
 // Define los endpoints para el CRUD de Mantenimiento
@@ -8,7 +7,7 @@ const mantenimientoController = require('../controllers/mantenimientoController'
 // CREATE: Crear un nuevo registro de mantenimiento
 router.post('/', mantenimientoController.crearMantenimiento);
 
-// READ ALL: Obtener todos los registros de mantenimiento
+// READ ALL: Obtener todos los registros de mantenimiento (con filtros opcionales)
 router.get('/', mantenimientoController.obtenerMantenimientos);
 
 // READ ONE: Obtener un registro de mantenimiento por ID

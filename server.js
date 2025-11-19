@@ -35,6 +35,12 @@ app.use("/api/localidades", localidadRoutes);
 app.use("/viajes", viajesRoutes);
 app.use("/api/expenses", expenseRoutes);
 
+const vehiculosRoutes = require("./src/routes/vehiculos");
+app.use("/api/vehiculos", vehiculosRoutes);
+
+const mantenimientosRoutes = require("./src/routes/mantenimientos");
+app.use("/api/mantenimientos", mantenimientosRoutes);
+
 // Middleware global de errores
 app.use(errorHandler);
 

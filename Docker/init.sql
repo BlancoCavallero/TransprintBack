@@ -269,7 +269,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Mantenimiento` (
   `observaciones` VARCHAR(255) NULL, -- Más espacio para observaciones
   `tipo` VARCHAR(45) NULL,
   `idVehiculo` INT NOT NULL,
-  PRIMARY KEY (`idMantenimiento`),
+  PRIMARY KEY (`idMantenimiento`), -- Solo idMantenimiento como PK
   INDEX `fk_Mantenimiento_Vehiculo1_idx` (`idVehiculo` ASC) VISIBLE,
   CONSTRAINT `fk_Mantenimiento_Vehiculo1`
     FOREIGN KEY (`idVehiculo`)
