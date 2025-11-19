@@ -56,7 +56,11 @@ const verificarViajeActivo = async (idChofer) => {
   }
 
   // Buscar si alguno está en estado "activo"
-  const viajeActivo = viajes.some(v => v.estado.toLowerCase() === "activo");
+  const viajeActivo = viajes.some(v =>
+    v.estado && v.estado.toLowerCase() === "activo"
+  );
+
+  //
 
   return {
     activo: viajeActivo,
@@ -165,16 +169,36 @@ const modificarChofer = async (idChofer, data) => {
 
 // --- Eliminar chofer ---
 const eliminarChofer = async (idChofer) => {
-//activar cuando exista viaje
-/*  const [viajes] = await db.query(
-    "SELECT * FROM Viaje WHERE idChofer = ? AND estado = 'activo'",
+  const { activo: estaEnViaje } = await verificarViajeActivo(idChofer);
+  console.log(estaEnViaje);
+
+  //si el chofer esta en viaje no permite eliminarlo
+  if (estaEnViaje) {
+    throw new Error("El chofer se encuentra en viaje y no puede eliminarse");
+  }
+
+  // Buscar si tiene un vehículo asignado
+  const [[relacion]] = await db.query(
+    `SELECT idVehiculo FROM ChoferXVehiculo WHERE idChofer = ?`,
     [idChofer]
   );
-  if (viajes.length > 0)
-    throw new Error("El chofer tiene viajes activos y no puede eliminarse");
-*/
+
+  if (relacion) {
+    // Liberar el vehículo
+    await db.query(
+      "UPDATE Vehiculo SET estado = 'activo' WHERE idVehiculo = ?",
+      [relacion.idVehiculo]
+    );
+
+    // Eliminar relación chofer-vehículo
+    await db.query(
+      "DELETE FROM ChoferXVehiculo WHERE idChofer = ?",
+      [idChofer]
+    );
+  }
+   // Inhabilitar chofer
   await db.query(
-    "UPDATE Chofer SET estadoDisponibilidad = 'Inhabilitado' WHERE idChofer = ?",
+    "UPDATE Chofer SET estadoDisponibilidad = 'Inhabilitado' WHERE idChofer = ?", // es incoherente ya que si lo dejo como inhabilitado, cuando consulto su estadoDisponibilidad se calcula devuelta y me traeria la respuesta desde esa funcion
     [idChofer]
   );
 };
@@ -339,7 +363,7 @@ const consultarDisponibilidad = async (estado) => {
       [estadoActualizado, chofer.idChofer]
     );
 
-// Filtrar por estado pedido
+    // Filtrar por estado pedido
     if (estadoActualizado.toLowerCase() === estado.toLowerCase()) {
       resultado.push({
         ...chofer,
@@ -352,14 +376,6 @@ const consultarDisponibilidad = async (estado) => {
     }
     }
   return resultado;
-  /*const [rows] = await db.query(`
-    SELECT c.dni, c.estadoDisponibilidad,
-           p.nombre, p.apellido, p.telefono
-    FROM Chofer c
-    JOIN Persona p ON c.idPersona = p.idPersona
-    WHERE LOWER(c.estadoDisponibilidad) = LOWER(?)
-  `, [estado]);
-  return rows;*/
 };
 
 // --- Asignar vehiculo a chofer ---
