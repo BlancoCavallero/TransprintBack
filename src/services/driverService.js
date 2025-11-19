@@ -43,12 +43,12 @@ const verificarDocumentacion = async (idChofer) => {
 };
 
 const verificarViajeActivo = async (idChofer) => {
-  const [viajes] = await db.query(`
-    SELECT v.idViaje, v.estado
-    FROM Viaje v
-    JOIN ChoferXVehiculo cxv ON v.idChoferVehiculo = cxv.idChoferVehiculo
-    WHERE cxv.idChofer = ?
-  `, [idChofer]);
+ const [viajes] = await db.query(`
+  SELECT idViaje, estado
+  FROM Viaje
+  WHERE idChofer = ?
+`, [idChofer]);
+
 
   // Si no tiene viajes → NO está ocupado
   if (viajes.length === 0) {
@@ -395,12 +395,14 @@ const asignarVehiculo = async (idChofer, idVehiculo) => {
   if (chofer.estadoDisponibilidad !== "Libre")
     throw new Error("El chofer no está disponible");
 
+  const fechaAsignacion = new Date();
+
   // Registrar la asignación en ChoferXVehiculo (si no existe)
   await db.query(
-    `INSERT INTO ChoferXVehiculo (idChofer, idVehiculo)
-     VALUES (?, ?)
+    `INSERT INTO ChoferXVehiculo (idChofer, idVehiculo, fechaAsignacion)
+     VALUES (?, ?, ?)
      ON DUPLICATE KEY UPDATE idChoferVehiculo = idChoferVehiculo;`,
-    [idChofer, idVehiculo]
+    [idChofer, idVehiculo, fechaAsignacion]
   );
 
   // Actualizar estado del vehículo y del chofer
@@ -419,7 +421,7 @@ const asignarVehiculo = async (idChofer, idVehiculo) => {
     [idChofer, idVehiculo]
   );
 
-  return { idChofer, idVehiculo, idChoferVehiculo: registro.idChoferVehiculo, asignado: true };
+  return { idChofer, idVehiculo, idChoferVehiculo: registro.idChoferVehiculo,fechaAsignacion: registro.fechaAsignacion, asignado: true };
 };
 
 module.exports = {

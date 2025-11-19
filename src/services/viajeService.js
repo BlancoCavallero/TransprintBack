@@ -7,7 +7,7 @@ const obtenerViajes = async (filtros = {}) => {
   let query = `
     SELECT v.*, cv.idChoferVehiculo
     FROM Viaje v
-    LEFT JOIN ChoferVehiculo cv ON v.idChofer = cv.idChofer AND v.idVehiculo = cv.idVehiculo
+    LEFT JOIN ChoferXVehiculo cv ON v.idChofer = cv.idChofer AND v.idVehiculo = cv.idVehiculo
     WHERE 1=1
   `;
   const params = [];
@@ -53,7 +53,7 @@ const crear = async (viaje) => {
   // 1. Buscar chofer y vehículo desde idChoferVehiculo
   const [cv] = await db.query(
     `SELECT idChofer, idVehiculo 
-     FROM ChoferVehiculo 
+     FROM ChoferXVehiculo 
      WHERE idChoferVehiculo = ?`,
     [idChoferVehiculo]
   );

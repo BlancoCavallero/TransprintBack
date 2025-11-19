@@ -16,7 +16,7 @@ const obtenerClientesFiltrados = async (valor) => {
   const esNumero = /^\d+$/.test(valor);
   //falta filtrar por localidad o provincia
   const [rows] = await db.query(`
-    SELECT c.codPostal, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
+    SELECT c.c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
            p.nombre, p.apellido, p.cuit, p.telefono
     FROM Cliente c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -37,7 +37,7 @@ const obtenerPorCorreo = async (correo) => {
 
 const crearCliente = async (cliente) => {
   
-  const { codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad } = cliente;
+  const { correo, observaciones, razonSocial, tipo, idPersona, idLocalidad } = cliente;
 
   //verifico que el idPersona no esté usado en otro cliente
   const [existe] = await db.query(
@@ -67,15 +67,15 @@ const crearCliente = async (cliente) => {
   }
   
   const [result] = await db.query(
-    "INSERT INTO Cliente (codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [codPostal, correo, observaciones || null, razonSocial, tipo, idPersona, idLocalidad]
+    "INSERT INTO Cliente (correo, observaciones, razonSocial, tipo, idPersona, idLocalidad) VALUES (?, ?, ?, ?, ?, ?)",
+    [correo, observaciones || null, razonSocial, tipo, idPersona, idLocalidad]
   );
 
-  return { idCliente: result.insertId, codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad};
+  return { idCliente: result.insertId, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad};
 };
 
 const actualizarCliente = async (id, cliente) => {
-  const { codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad } = cliente;
+  const { correo, observaciones, razonSocial, tipo, idPersona, idLocalidad } = cliente;
   //Verifico que el cliente exista
   const [clienteExistente] = await db.query(
     "SELECT * FROM Cliente WHERE idCliente = ?",
@@ -122,8 +122,8 @@ const actualizarCliente = async (id, cliente) => {
   }
 
   await db.query(
-    "UPDATE Cliente SET codPostal = ?, correo = ?, observaciones = ?, razonSocial = ?, tipo = ?, idPersona = ?, idLocalidad = ? WHERE idCliente = ?",
-    [codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad, id]
+    "UPDATE Cliente SET correo = ?, observaciones = ?, razonSocial = ?, tipo = ?, idPersona = ?, idLocalidad = ? WHERE idCliente = ?",
+    [correo, observaciones, razonSocial, tipo, idPersona, idLocalidad, id]
   );
 
   return { id, actualizado: true };
