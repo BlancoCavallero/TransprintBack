@@ -5,20 +5,27 @@ const verificarDocumentacion = async (idChofer) => {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
-    // Consultar todos los documentos del chofer
+  // Consultar todos los documentos del chofer
   const [documentos] = await db.query(
     "SELECT nombre, fechaVencimiento FROM Documentacion WHERE idChofer = ?",
     [idChofer]
   );
 
   if (!documentos.length) {
-    return { cumpleRequisitos: false, motivos: ["No tiene documentación cargada"] };
+    return {
+      cumpleRequisitos: false,
+      motivos: ["No tiene documentación cargada"],
+    };
   }
-/*  if (!documentos.length) return false;*/
+  /*  if (!documentos.length) return false;*/
 
   // Buscar carnet y examen médico, por ejemplo
-  const carnet = documentos.find((d) => d.nombre.toLowerCase().includes("carnet"));
-  const examen = documentos.find((d) => d.nombre.toLowerCase().includes("examen"));
+  const carnet = documentos.find((d) =>
+    d.nombre.toLowerCase().includes("carnet")
+  );
+  const examen = documentos.find((d) =>
+    d.nombre.toLowerCase().includes("examen")
+  );
 
   const motivos = [];
   if (!carnet) motivos.push("Falta carnet");
@@ -38,7 +45,7 @@ const verificarDocumentacion = async (idChofer) => {
     return { cumpleRequisitos: false, motivos };
   }
 
-   // Si llegó hasta acá, cumple con todo
+  // Si llegó hasta acá, cumple con todo
   return { cumpleRequisitos: true };
 };
 
@@ -47,22 +54,20 @@ const registrarChofer = async (data) => {
   const { dni, idPersona } = data;
 
   //verifico que no se repita el dni
-  const [existeDni] = await db.query(
-    "SELECT * FROM Chofer WHERE dni = ?",
-    [dni]
-  );
+  const [existeDni] = await db.query("SELECT * FROM Chofer WHERE dni = ?", [
+    dni,
+  ]);
   if (existeDni.length > 0) {
     throw new Error("Ya existe un chofer registrado con ese dni");
-  } 
+  }
 
   //verifico que el idPersona no esté usado en otro chofer
-  const [existe] = await db.query(
-    "SELECT * FROM Chofer WHERE idPersona = ?",
-    [idPersona]
-  );
+  const [existe] = await db.query("SELECT * FROM Chofer WHERE idPersona = ?", [
+    idPersona,
+  ]);
   if (existe.length > 0) {
     throw new Error("Ya existe un chofer registrado con ese idPersona");
-  } 
+  }
 
   //verifico que la persona ya esté registrada
   const [existePersona] = await db.query(
@@ -72,7 +77,7 @@ const registrarChofer = async (data) => {
   if (existePersona.length == 0) {
     throw new Error("El idPersona ingresado no existe ");
   }
-  
+
   const [result] = await db.query(
     "INSERT INTO Chofer (dni, estadoDisponibilidad, idPersona) VALUES (?, 'Inhabilitado', ?)",
     [dni, idPersona]
@@ -90,7 +95,8 @@ const registrarChofer = async (data) => {
     [nuevoEstado, idChofer]
   );*/
 
-  return { idChofer, dni, idPersona };
+  // Return enriched chofer object
+  return await obtenerPorId(idChofer);
 };
 
 // --- Modificar chofer ---
@@ -113,18 +119,17 @@ const modificarChofer = async (idChofer, data) => {
   );
   if (existeDni.length > 0) {
     throw new Error("Ya existe un chofer registrado con ese DNI");
-  } 
+  }
 
   //verifico que el idPersona no esté usado en otro chofer
-  const [existe] = await db.query(
-    "SELECT * FROM Chofer WHERE idPersona = ?",
-    [idPersona]
-  );
+  const [existe] = await db.query("SELECT * FROM Chofer WHERE idPersona = ?", [
+    idPersona,
+  ]);
   if (existe.length > 0) {
     throw new Error("Ya existe un chofer registrado con ese idPersona");
-  } 
+  }
 
-   //verifico que la persona ya esté registrada
+  //verifico que la persona ya esté registrada
   const [existePersona] = await db.query(
     "SELECT * FROM Persona WHERE idPersona = ?",
     [idPersona]
@@ -138,13 +143,14 @@ const modificarChofer = async (idChofer, data) => {
     [dni, idPersona, idChofer]
   );
 
-  return { idChofer, actualizado: true };
+  // return enriched chofer
+  return await obtenerPorId(idChofer);
 };
 
 // --- Eliminar chofer ---
 const eliminarChofer = async (idChofer) => {
-//activar cuando exista viaje
-/*  const [viajes] = await db.query(
+  //activar cuando exista viaje
+  /*  const [viajes] = await db.query(
     "SELECT * FROM Viaje WHERE idChofer = ? AND estado = 'activo'",
     [idChofer]
   );
@@ -159,27 +165,60 @@ const eliminarChofer = async (idChofer) => {
 
 // --- Obtener todos los choferes ---
 const obtenerChoferes = async () => {
-  
-  
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni,
-           p.nombre, p.apellido, p.cuit, p.telefono, p.idPersona
+    SELECT c.idChofer, c.dni, c.estadoDisponibilidad, c.idPersona,
+           p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
   `);
-  return rows;
+
+  const mapped = rows.map((r) => ({
+    idChofer: r.idChofer,
+    dni: r.dni,
+    estadoDisponibilidad: r.estadoDisponibilidad,
+    idPersona: r.idPersona,
+    persona: r.idPersona
+      ? {
+          idPersona: r.idPersona,
+          nombre: r.personaNombre,
+          apellido: r.personaApellido,
+          cuit: r.personaCuit,
+          telefono: r.personaTelefono,
+        }
+      : null,
+  }));
+
+  return mapped;
 };
 
 // --- Obtener un chofer ID---
 const obtenerPorId = async (idChofer) => {
-  const [[row]] = await db.query(`
-    SELECT c.idChofer, c.dni,
-           p.nombre, p.apellido, p.cuit, p.telefono
+  const [[r]] = await db.query(
+    `
+    SELECT c.idChofer, c.dni, c.estadoDisponibilidad, c.idPersona,
+           p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
     WHERE c.idChofer = ?
-  `, [idChofer]);
-  return row;
+  `,
+    [idChofer]
+  );
+  if (!r) return null;
+  return {
+    idChofer: r.idChofer,
+    dni: r.dni,
+    estadoDisponibilidad: r.estadoDisponibilidad,
+    idPersona: r.idPersona,
+    persona: r.idPersona
+      ? {
+          idPersona: r.idPersona,
+          nombre: r.personaNombre,
+          apellido: r.personaApellido,
+          cuit: r.personaCuit,
+          telefono: r.personaTelefono,
+        }
+      : null,
+  };
 };
 
 /*
@@ -234,9 +273,10 @@ const obtenerChoferesFiltrados = async (valor) => {
   // Verificamos si el valor es un número para buscar por DNI
   const esNumero = /^\d+$/.test(valor);
 
-  const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
-           p.nombre, p.apellido, p.cuit, p.telefono
+  const [rows] = await db.query(
+    `
+    SELECT c.idChofer, c.dni, c.estadoDisponibilidad, c.idPersona,
+           p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
     WHERE
@@ -244,9 +284,23 @@ const obtenerChoferesFiltrados = async (valor) => {
       OR LOWER(CONVERT(p.apellido USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
       OR LOWER(CONVERT(c.estadoDisponibilidad USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
       ${esNumero ? "OR c.dni = ?" : ""}
-  `, esNumero ? [valor, valor, valor, valor] : [valor, valor, valor]);
-
-  return rows;
+  `,
+    esNumero ? [valor, valor, valor, valor] : [valor, valor, valor]
+  );
+  const mapped = rows.map((r) => ({
+    idChofer: r.idChofer,
+    dni: r.dni,
+    estadoDisponibilidad: r.estadoDisponibilidad,
+    idPersona: r.idPersona,
+    persona: {
+      idPersona: r.idPersona,
+      nombre: r.personaNombre,
+      apellido: r.personaApellido,
+      cuit: r.personaCuit,
+      telefono: r.personaTelefono,
+    },
+  }));
+  return mapped;
 };
 
 // --- Consultar historial de viajes ---
@@ -265,9 +319,18 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
     WHERE cv.idChofer = ?`;
   const params = [idChofer];
 
-  if (desde) { query += " AND fecha >= ?"; params.push(desde); }
-  if (hasta) { query += " AND fecha <= ?"; params.push(hasta); }
-  if (estado) { query += " AND estado = ?"; params.push(estado); }
+  if (desde) {
+    query += " AND fecha >= ?";
+    params.push(desde);
+  }
+  if (hasta) {
+    query += " AND fecha <= ?";
+    params.push(hasta);
+  }
+  if (estado) {
+    query += " AND estado = ?";
+    params.push(estado);
+  }
 
   const [rows] = await db.query(query, params);
   return rows;
@@ -294,7 +357,7 @@ const consultarDisponibilidad = async (estado) => {
         estadoDisponibilidad: estadoActualizado,
       });
     }
-    }
+  }
   return resultado;
   /*const [rows] = await db.query(`
     SELECT c.dni, c.estadoDisponibilidad,
@@ -312,7 +375,8 @@ const asignarVehiculo = async (idChofer, idVehiculo) => {
     "SELECT estado FROM Vehiculo WHERE idVehiculo = ?",
     [idVehiculo]
   );
-  if (!vehiculo || vehiculo.estado !== "activo") throw new Error("El vehículo no está disponible");
+  if (!vehiculo || vehiculo.estado !== "activo")
+    throw new Error("El vehículo no está disponible");
 
   // Verificar que el chofer no esté ya ocupado
   const [[chofer]] = await db.query(
@@ -341,13 +405,18 @@ const asignarVehiculo = async (idChofer, idVehiculo) => {
     [idChofer]
   );
 
-    // Obtener el idChoferVehiculo recién creado
+  // Obtener el idChoferVehiculo recién creado
   const [[registro]] = await db.query(
     "SELECT idChoferVehiculo FROM ChoferXVehiculo WHERE idChofer = ? AND idVehiculo = ?",
     [idChofer, idVehiculo]
   );
 
-  return { idChofer, idVehiculo, idChoferVehiculo: registro.idChoferVehiculo, asignado: true };
+  return {
+    idChofer,
+    idVehiculo,
+    idChoferVehiculo: registro.idChoferVehiculo,
+    asignado: true,
+  };
 };
 
 module.exports = {
@@ -361,5 +430,5 @@ module.exports = {
   verificarDocumentacion,
   consultarHistorial,
   consultarDisponibilidad,
-  asignarVehiculo
+  asignarVehiculo,
 };

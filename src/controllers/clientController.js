@@ -5,10 +5,15 @@ const registrarCliente = async (req, res, next) => {
   try {
     const { correo } = req.body;
     const existe = await clientService.obtenerPorCorreo(correo);
-    if (existe) return errorResponse(res, "El cliente con este correo ya está registrado", 400);
+    if (existe)
+      return errorResponse(
+        res,
+        "El cliente con este correo ya está registrado",
+        400
+      );
 
-    await clientService.crearCliente(req.body);
-    successResponse(res, null, "Cliente registrado exitosamente");
+    const created = await clientService.crearCliente(req.body);
+    successResponse(res, created, "Cliente registrado exitosamente");
   } catch (error) {
     next(error);
   }
@@ -33,18 +38,15 @@ const obtenerClientePorId = async (req, res, next) => {
   }
 };
 
-const obtenerClientesFiltradosController = async (req, res) => {
+const obtenerClientesFiltradosController = async (req, res, next) => {
   try {
     const { valor } = req.params;
     const clientes = await clientService.obtenerClientesFiltrados(valor);
-
-    if (!clientes.length) {
+    if (!clientes.length)
       return res.status(404).json({ mensaje: "No se encontraron clientes" });
-    }
-
-    res.json(clientes);
+    successResponse(res, clientes);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
@@ -53,8 +55,11 @@ const actualizarCliente = async (req, res, next) => {
     const cliente = await clientService.obtenerPorId(req.params.id);
     if (!cliente) return errorResponse(res, "Cliente no encontrado", 404);
 
-    await clientService.actualizarCliente(req.params.id, req.body);
-    successResponse(res, null, "Cliente actualizado correctamente");
+    const updated = await clientService.actualizarCliente(
+      req.params.id,
+      req.body
+    );
+    successResponse(res, updated, "Cliente actualizado correctamente");
   } catch (error) {
     next(error);
   }

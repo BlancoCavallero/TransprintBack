@@ -24,8 +24,13 @@ const crearPersona = async (req, res, next) => {
   try {
     const { cuit } = req.body;
     const existe = await personService.obtenerPorCuit(cuit);
-    if (existe) return errorResponse(res, "La persona con este cuit ya está registrada", 400);
-        
+    if (existe)
+      return errorResponse(
+        res,
+        "La persona con este cuit ya está registrada",
+        400
+      );
+
     await personService.crear(req.body);
     successResponse(res, null, "Persona creada exitosamente");
   } catch (error) {
@@ -35,9 +40,17 @@ const crearPersona = async (req, res, next) => {
     if (error.sqlMessage) {
       if (error.sqlMessage.includes("Out of range value")) {
         if (error.sqlMessage.includes("cuit")) {
-          return errorResponse(res, "El número de CUIT es inválido o demasiado largo.", 400);
+          return errorResponse(
+            res,
+            "El número de CUIT es inválido o demasiado largo.",
+            400
+          );
         } else if (error.sqlMessage.includes("telefono")) {
-          return errorResponse(res, "El número de teléfono es es inválido o demasiado largo.", 400);
+          return errorResponse(
+            res,
+            "El número de teléfono es es inválido o demasiado largo.",
+            400
+          );
         }
       }
     }
@@ -49,7 +62,7 @@ const actualizarPersona = async (req, res, next) => {
   try {
     const persona = await personService.obtenerPorId(req.params.id);
     if (!persona) return errorResponse(res, "Persona no encontrada", 404);
-  
+
     await personService.actualizar(req.params.id, req.body);
     successResponse(res, null, "Persona actualizada correctamente");
   } catch (error) {
@@ -58,7 +71,7 @@ const actualizarPersona = async (req, res, next) => {
 };
 
 const eliminar = async (req, res, next) => {
-    try {
+  try {
     const persona = await personService.obtenerPorId(req.params.id);
     if (!persona) return errorResponse(res, "Persona no encontrada", 404);
 
@@ -76,7 +89,3 @@ module.exports = {
   actualizarPersona,
   eliminar,
 };
-
-
-
-  

@@ -88,18 +88,15 @@ const obtenerChoferDni = async (req, res, next) => {
 };
 */
 
-const obtenerChoferesFiltradosController = async (req, res) => {
+const obtenerChoferesFiltradosController = async (req, res, next) => {
   try {
     const { valor } = req.params;
     const choferes = await driverService.obtenerChoferesFiltrados(valor);
-
-    if (!choferes.length) {
-      return res.status(404).json({ mensaje: "No se encontraron choferes" });
-    }
-
-    res.json(choferes);
+    if (!choferes.length)
+      return errorResponse(res, "No se encontraron choferes", 404);
+    successResponse(res, choferes);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
@@ -107,7 +104,11 @@ const obtenerChoferesFiltradosController = async (req, res) => {
 const consultarHistorial = async (req, res, next) => {
   try {
     const { desde, hasta, estado } = req.query;
-    const historial = await driverService.consultarHistorial(req.params.id, { desde, hasta, estado });
+    const historial = await driverService.consultarHistorial(req.params.id, {
+      desde,
+      hasta,
+      estado,
+    });
     successResponse(res, historial, "Historial de viajes obtenido");
   } catch (error) {
     next(error);
@@ -119,9 +120,8 @@ const consultarChoferesDisponibilidad = async (req, res, next) => {
   try {
     const { estado } = req.params;
     const resultado = await driverService.consultarDisponibilidad(estado);
-    
     // Devuelve los choferes filtrados según el estado solicitado
-    successResponse(res, { estadoDisponibilidad: resultado }, "Disponibilidad consultada");
+    successResponse(res, resultado, "Disponibilidad consultada");
   } catch (error) {
     next(error);
   }
@@ -140,7 +140,6 @@ const asignarVehiculo = async (req, res, next) => {
   }
 };
 
-
 module.exports = {
   registrarChofer,
   modificarChofer,
@@ -150,5 +149,5 @@ module.exports = {
   obtenerChoferesFiltradosController,
   consultarHistorial,
   consultarChoferesDisponibilidad,
-  asignarVehiculo
+  asignarVehiculo,
 };
