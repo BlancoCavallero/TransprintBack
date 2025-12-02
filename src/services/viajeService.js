@@ -1,6 +1,8 @@
 const db = require("../config/db");
 
-// ✅ GET - obtener todos o filtrados
+// ============================================================
+// GET - obtener todos o filtrados
+// ============================================================
 const obtenerViajes = async (filtros = {}) => {
   // Query to bring viaje with cliente and choferVehiculo (with chofer.persona and vehiculo)
   let query = `
@@ -23,27 +25,27 @@ const obtenerViajes = async (filtros = {}) => {
   const params = [];
 
   if (filtros.idViaje) {
-    query += " AND idViaje = ?";
+    query += " AND v.idViaje = ?";
     params.push(filtros.idViaje);
   }
   if (filtros.estado) {
-    query += " AND estado LIKE ?";
+    query += " AND v.estado LIKE ?";
     params.push(`%${filtros.estado}%`);
   }
   if (filtros.idCliente) {
-    query += " AND idCliente = ?";
+    query += " AND v.idCliente = ?";
     params.push(filtros.idCliente);
   }
   if (filtros.idChoferVehiculo) {
-    query += " AND idChoferVehiculo = ?";
+    query += " AND cv.idChoferVehiculo = ?";
     params.push(filtros.idChoferVehiculo);
   }
   if (filtros.idLocalidadOrigen) {
-    query += " AND idLocalidadOrigen = ?";
+    query += " AND v.idLocalidadOrigen = ?";
     params.push(filtros.idLocalidadOrigen);
   }
   if (filtros.idLocalidadDestino) {
-    query += " AND idLocalidadDestino = ?";
+    query += " AND v.idLocalidadDestino = ?";
     params.push(filtros.idLocalidadDestino);
   }
 
@@ -119,7 +121,9 @@ const obtenerViajes = async (filtros = {}) => {
   return resultado;
 };
 
-// ✅ POST - crear viaje
+// ============================================================
+// POST - crear viaje
+// ============================================================
 const crear = async (viaje) => {
   const {
     estado,
@@ -134,6 +138,21 @@ const crear = async (viaje) => {
     idChoferVehiculo,
   } = viaje;
 
+  // 1. Buscar chofer y vehículo desde idChoferVehiculo
+  const [cv] = await db.query(
+    `SELECT idChofer, idVehiculo 
+     FROM ChoferXVehiculo 
+     WHERE idChoferVehiculo = ?`,
+    [idChoferVehiculo]
+  );
+
+  if (cv.length === 0) {
+    throw new Error("La relación Chofer–Vehículo no existe");
+  }
+
+  const { idChofer, idVehiculo } = cv[0];
+
+  // 2. Crear viaje con esos datos
   const [result] = await db.query(
     `INSERT INTO Viaje (estado, fecha, kilometros, observaciones, motivoCancelacion, precio, idCliente, idLocalidadOrigen, idLocalidadDestino, idChoferVehiculo)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -160,7 +179,9 @@ const crear = async (viaje) => {
   return viajes[0] || { idViaje, ...viaje };
 };
 
-// ✅ PUT - actualizar viaje
+// ============================================================
+// PUT - actualizar viaje
+// ============================================================
 const actualizar = async (id, viaje) => {
   const {
     estado,
@@ -175,27 +196,40 @@ const actualizar = async (id, viaje) => {
     idChoferVehiculo,
   } = viaje;
 
+  // 1. Buscar los FKs desde ChoferVehiculo
+  const [cv] = await db.query(
+    `SELECT idChofer, idVehiculo 
+     FROM ChoferVehiculo 
+     WHERE idChoferVehiculo = ?`,
+    [idChoferVehiculo]
+  );
+
+  if (cv.length === 0) {
+    throw new Error("La relación Chofer–Vehículo no existe");
+  }
+
+  const { idChofer, idVehiculo } = cv[0];
+
+  // 2. Actualizar viaje con nuevos FK
   await db.query(
-    `UPDATE Viaje SET estado=?, fecha=?, kilometros=?, observaciones=?, motivoCancelacion=?, precio=?, idCliente=?, idLocalidadOrigen=?, idLocalidadDestino=?, idChoferVehiculo=? WHERE idViaje=?`,
+    `UPDATE Viaje SET 
+      estado=?, fecha=?, kilometros=?, observaciones=?, motivoCancelacion=?, 
+      precio=?, idCliente=?, idLocalidadOrigen=?, idLocalidadDestino=?,
+      idChofer=?, idVehiculo=?
+     WHERE idViaje=?`,
     [
-      estado,
-      fecha,
-      kilometros,
-      observaciones,
-      motivoCancelacion,
-      precio,
-      idCliente,
-      idLocalidadOrigen,
-      idLocalidadDestino,
-      idChoferVehiculo,
-      id,
+      estado, fecha, kilometros, observaciones, motivoCancelacion, 
+      precio, idCliente, idLocalidadOrigen, idLocalidadDestino, 
+      idChofer, idVehiculo, id
     ]
   );
   const viajes = await obtenerViajes({ idViaje: id });
   return viajes[0] || { idViaje: id, ...viaje };
 };
 
-// ✅ DELETE - eliminar viaje
+// ============================================================
+// DELETE - eliminar viaje
+// ============================================================
 const eliminar = async (id) => {
   await db.query("DELETE FROM Viaje WHERE idViaje = ?", [id]);
   return { message: "Viaje eliminado correctamente" };

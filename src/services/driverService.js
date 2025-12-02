@@ -17,26 +17,23 @@ const verificarDocumentacion = async (idChofer) => {
       motivos: ["No tiene documentación cargada"],
     };
   }
-  /*  if (!documentos.length) return false;*/
 
-  // Buscar carnet y examen médico, por ejemplo
-  const carnet = documentos.find((d) =>
-    d.nombre.toLowerCase().includes("carnet")
-  );
-  const examen = documentos.find((d) =>
-    d.nombre.toLowerCase().includes("examen")
-  );
+ // Filtrar todos los carnets y exámenes
+  const carnets = documentos.filter(d => d.nombre.toLowerCase().includes("carnet"));
+  const examenes = documentos.filter(d => d.nombre.toLowerCase().includes("examen"));
 
-  const motivos = [];
-  if (!carnet) motivos.push("Falta carnet");
-  if (!examen) motivos.push("Falta examen médico");
-  // Si faltan, ya no cumple
-  if (!carnet || !examen) {
+
+  const motivos = []; //no iria mas arriba en la linea 13?
+  if (carnets.length === 0) motivos.push("Falta carnet");
+  if (examenes.length === 0) motivos.push("Falta examen médico");
+
+  if (motivos.length > 0) {
     return { cumpleRequisitos: false, motivos };
   }
 
-  const carnetVigente = new Date(carnet.fechaVencimiento) >= hoy;
-  const examenVigente = new Date(examen.fechaVencimiento) >= hoy;
+   // Ver si AL MENOS UNO de cada tipo está vigente
+  const carnetVigente = carnets.some(c => new Date(c.fechaVencimiento) >= hoy);
+  const examenVigente = examenes.some(e => new Date(e.fechaVencimiento) >= hoy);
 
   if (!carnetVigente) motivos.push("Carnet vencido");
   if (!examenVigente) motivos.push("Examen médico vencido");
@@ -44,9 +41,34 @@ const verificarDocumentacion = async (idChofer) => {
   if (motivos.length > 0) {
     return { cumpleRequisitos: false, motivos };
   }
+  
+  return { cumpleRequisitos: true, motivos: ["Documentación completa y vigente"] };
+};
 
-  // Si llegó hasta acá, cumple con todo
-  return { cumpleRequisitos: true };
+const verificarViajeActivo = async (idChofer) => {
+ const [viajes] = await db.query(`
+  SELECT idViaje, estado
+  FROM Viaje
+  WHERE idChofer = ?
+`, [idChofer]);
+
+
+  // Si no tiene viajes → NO está ocupado
+  if (viajes.length === 0) {
+    return { activo: false };
+  }
+
+  // Buscar si alguno está en estado "activo"
+  const viajeActivo = viajes.some(v =>
+    v.estado && v.estado.toLowerCase() === "activo"
+  );
+
+  //
+
+  return {
+    activo: viajeActivo,
+    motivos: viajeActivo ? ["El chofer está en viaje"] : []
+  };
 };
 
 // --- Registrar chofer ---
@@ -149,16 +171,36 @@ const modificarChofer = async (idChofer, data) => {
 
 // --- Eliminar chofer ---
 const eliminarChofer = async (idChofer) => {
-  //activar cuando exista viaje
-  /*  const [viajes] = await db.query(
-    "SELECT * FROM Viaje WHERE idChofer = ? AND estado = 'activo'",
+  const { activo: estaEnViaje } = await verificarViajeActivo(idChofer);
+  console.log(estaEnViaje);
+
+  //si el chofer esta en viaje no permite eliminarlo
+  if (estaEnViaje) {
+    throw new Error("El chofer se encuentra en viaje y no puede eliminarse");
+  }
+
+  // Buscar si tiene un vehículo asignado
+  const [[relacion]] = await db.query(
+    `SELECT idVehiculo FROM ChoferXVehiculo WHERE idChofer = ?`,
     [idChofer]
   );
-  if (viajes.length > 0)
-    throw new Error("El chofer tiene viajes activos y no puede eliminarse");
-*/
+
+  if (relacion) {
+    // Liberar el vehículo
+    await db.query(
+      "UPDATE Vehiculo SET estado = 'activo' WHERE idVehiculo = ?",
+      [relacion.idVehiculo]
+    );
+
+    // Eliminar relación chofer-vehículo
+    await db.query(
+      "DELETE FROM ChoferXVehiculo WHERE idChofer = ?",
+      [idChofer]
+    );
+  }
+   // Inhabilitar chofer
   await db.query(
-    "UPDATE Chofer SET estadoDisponibilidad = 'Inhabilitado' WHERE idChofer = ?",
+    "UPDATE Chofer SET estadoDisponibilidad = 'Inhabilitado' WHERE idChofer = ?", // es incoherente ya que si lo dejo como inhabilitado, cuando consulto su estadoDisponibilidad se calcula devuelta y me traeria la respuesta desde esa funcion
     [idChofer]
   );
 };
@@ -219,6 +261,23 @@ const obtenerPorId = async (idChofer) => {
         }
       : null,
   };
+};
+
+const obtenerChoferesCompleto = async () => {
+  const [rows] = await db.query(`
+    SELECT DISTINCT
+      c.idChofer,
+      c.estadoDisponibilidad,
+      p.idPersona,
+      p.nombre,
+      p.apellido,
+      p.telefono
+    FROM Chofer c
+    JOIN Persona p ON c.idPersona = p.idPersona
+    LEFT JOIN Documentacion d ON c.idChofer = d.idChofer
+  `);
+
+  return rows;
 };
 
 /*
@@ -338,35 +397,44 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
 
 // --- Consultar disponibilidad ---
 const consultarDisponibilidad = async (estado) => {
-  const choferes = await obtenerChoferes();
+  const choferes = await obtenerChoferesCompleto();
   const resultado = [];
 
   for (const chofer of choferes) {
     const docStatus = await verificarDocumentacion(chofer.idChofer);
-    const estadoActualizado = docStatus.cumpleRequisitos
-      ? "Libre"
-      : "Inhabilitado";
+    const viajeStatus = await verificarViajeActivo(chofer.idChofer);
+
+    let estadoActualizado;
+
+    if (viajeStatus.activo) {
+      estadoActualizado = "Ocupado";
+    } else if (docStatus.cumpleRequisitos) {
+      estadoActualizado = "Libre";
+    } else {
+      estadoActualizado = "Inhabilitado";
+    }
+
+    
+    
+    // Actualizar en base de datos
     await db.query(
       "UPDATE Chofer SET estadoDisponibilidad = ? WHERE idChofer = ?",
       [estadoActualizado, chofer.idChofer]
     );
 
-    if (estadoActualizado === estado) {
+    // Filtrar por estado pedido
+    if (estadoActualizado.toLowerCase() === estado.toLowerCase()) {
       resultado.push({
         ...chofer,
         estadoDisponibilidad: estadoActualizado,
+        motivos: [
+          ...(docStatus.motivos || []),
+          ...(viajeStatus.motivos || [])
+        ]
       });
     }
   }
   return resultado;
-  /*const [rows] = await db.query(`
-    SELECT c.dni, c.estadoDisponibilidad,
-           p.nombre, p.apellido, p.telefono
-    FROM Chofer c
-    JOIN Persona p ON c.idPersona = p.idPersona
-    WHERE LOWER(c.estadoDisponibilidad) = LOWER(?)
-  `, [estado]);
-  return rows;*/
 };
 
 // --- Asignar vehiculo a chofer ---
@@ -387,12 +455,14 @@ const asignarVehiculo = async (idChofer, idVehiculo) => {
   if (chofer.estadoDisponibilidad !== "Libre")
     throw new Error("El chofer no está disponible");
 
+  const fechaAsignacion = new Date();
+
   // Registrar la asignación en ChoferXVehiculo (si no existe)
   await db.query(
-    `INSERT INTO ChoferXVehiculo (idChofer, idVehiculo)
-     VALUES (?, ?)
+    `INSERT INTO ChoferXVehiculo (idChofer, idVehiculo, fechaAsignacion)
+     VALUES (?, ?, ?)
      ON DUPLICATE KEY UPDATE idChoferVehiculo = idChoferVehiculo;`,
-    [idChofer, idVehiculo]
+    [idChofer, idVehiculo, fechaAsignacion]
   );
 
   // Actualizar estado del vehículo y del chofer
@@ -411,12 +481,7 @@ const asignarVehiculo = async (idChofer, idVehiculo) => {
     [idChofer, idVehiculo]
   );
 
-  return {
-    idChofer,
-    idVehiculo,
-    idChoferVehiculo: registro.idChoferVehiculo,
-    asignado: true,
-  };
+  return { idChofer, idVehiculo, idChoferVehiculo: registro.idChoferVehiculo,fechaAsignacion: registro.fechaAsignacion, asignado: true };
 };
 
 module.exports = {

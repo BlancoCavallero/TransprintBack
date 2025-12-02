@@ -1,17 +1,16 @@
 const db = require("../config/db");
 
 const normalizarFecha = (fecha) => {
-  const f = new Date(fecha);
-  f.setHours(0, 0, 0, 0); // pone la hora a 00:00:00
-  return f;
-};
+  if (!fecha) return null;
+  
+  // Si ya es string "YYYY-MM-DD", devolver directo
+  if (typeof fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    return fecha;
+  }
 
-const formatearFechaCorta = (fecha) => {
-  const f = new Date(fecha);
-  const yyyy = f.getFullYear();
-  const mm = String(f.getMonth() + 1).padStart(2, "0");
-  const dd = String(f.getDate() + 1).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  // Si viene como Date, convertir manualmente sin usar la zona horaria
+  const f = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
+  return f.toISOString().split("T")[0];
 };
 
 // Obtener todas las documentaciones
@@ -142,13 +141,12 @@ const crear = async (data) => {
     idChofer,
   } = data;
 
-  //verifico que el Chofer ya esté registrado
   const [existeChofer] = await db.query(
     "SELECT * FROM Chofer WHERE idChofer = ?",
     [idChofer]
   );
-  if (existeChofer.length == 0) {
-    throw new Error("El idChofer ingresado no existe ");
+  if (existeChofer.length === 0) {
+    throw new Error("El idChofer ingresado no existe");
   }
 
   const renovacionInt = parseInt(renovacion, 10) || null;
@@ -172,6 +170,7 @@ const crear = async (data) => {
   // Devolver el objeto completo con vehiculo y chofer anidados
   return await obtenerPorId(id);
 };
+
 
 // Actualizar documentación
 const actualizar = async (id, data) => {

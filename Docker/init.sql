@@ -66,13 +66,12 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Cliente` (
   `idCliente` INT NOT NULL AUTO_INCREMENT,
-  `codPostal` INT NULL,
   `correo` VARCHAR(45) NULL,
   `observaciones` VARCHAR(45) NULL,
   `razonSocial` VARCHAR(45) NULL,
   `tipo` VARCHAR(45) NULL,
   `idPersona` INT NOT NULL, -- VUELVO A PONERLO EN NOT NULL
-  `idLocalidad` INT NULL,
+  `idLocalidad` INT NOT NULL,
   PRIMARY KEY (`idCliente`),
   UNIQUE INDEX `idCliente_UNIQUE` (`idCliente` ASC) VISIBLE,
   INDEX `fk_Cliente_Persona1_idx` (`idPersona` ASC) VISIBLE,
@@ -131,6 +130,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`ChoferXVehiculo` (
   `idChoferVehiculo` INT NOT NULL AUTO_INCREMENT,
   `idChofer` INT NOT NULL,
   `idVehiculo` INT NOT NULL,
+  `fechaAsignacion` DATE NOT NULL,  
   PRIMARY KEY (`idChoferVehiculo`),
   INDEX `fk_ChoferXVehiculo_Chofer1_idx` (`idChofer` ASC) VISIBLE,
   INDEX `fk_ChoferXVehiculo_Vehiculo1_idx` (`idVehiculo` ASC) VISIBLE,
@@ -162,13 +162,15 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Viaje` (
   `idCliente` INT NOT NULL,
   `idLocalidadOrigen` INT NOT NULL,
   `idLocalidadDestino` INT NOT NULL,
-  `idChoferVehiculo` INT NOT NULL,
+  `idChofer` INT NOT NULL,
+  `idVehiculo` INT NOT NULL,
   PRIMARY KEY (`idViaje`),
   INDEX `fk_Viaje_Cliente1_idx` (`idCliente` ASC) VISIBLE,
   UNIQUE INDEX `idViaje_UNIQUE` (`idViaje` ASC) VISIBLE,
   INDEX `fk_Viaje_Localidad2_idx` (`idLocalidadOrigen` ASC) VISIBLE,
   INDEX `fk_Viaje_Localidad1_idx` (`idLocalidadDestino` ASC) VISIBLE,
-  INDEX `fk_Viaje_ChoferXVehiculo1_idx` (`idChoferVehiculo` ASC) VISIBLE,
+  INDEX `fk_Viaje_Chofer1_idx` (`idChofer` ASC) VISIBLE,
+  INDEX `fk_Viaje_Vehiculo1_idx` (`idVehiculo` ASC) VISIBLE,
   CONSTRAINT `fk_Viaje_Cliente1`
     FOREIGN KEY (`idCliente`)
     REFERENCES `mydb`.`Cliente` (`idCliente`)
@@ -184,9 +186,14 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Viaje` (
     REFERENCES `mydb`.`Localidad` (`idLocalidad`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Viaje_ChoferXVehiculo1`
-    FOREIGN KEY (`idChoferVehiculo`)
-    REFERENCES `mydb`.`ChoferXVehiculo` (`idChoferVehiculo`)
+  CONSTRAINT `fk_Viaje_Chofer1`
+    FOREIGN KEY (`idChofer`)
+    REFERENCES `mydb`.`ChoferXVehiculo` (`idChofer`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+    CONSTRAINT `fk_Viaje_Vehiculo1`
+    FOREIGN KEY (`idVehiculo`)
+    REFERENCES `mydb`.`ChoferXVehiculo` (`idVehiculo`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -197,7 +204,7 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Gasto` (
   `idGasto` INT NOT NULL AUTO_INCREMENT,
-  `detalle` VARCHAR(45) NULL,
+  `detalle` VARCHAR(255) NULL,
   `monto` FLOAT NULL,
   `tipo` VARCHAR(45) NULL,
   `idViaje` INT NOT NULL,
@@ -269,7 +276,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Mantenimiento` (
   `observaciones` VARCHAR(255) NULL, -- Más espacio para observaciones
   `tipo` VARCHAR(45) NULL,
   `idVehiculo` INT NOT NULL,
-  PRIMARY KEY (`idMantenimiento`),
+  PRIMARY KEY (`idMantenimiento`), -- Solo idMantenimiento como PK
   INDEX `fk_Mantenimiento_Vehiculo1_idx` (`idVehiculo` ASC) VISIBLE,
   CONSTRAINT `fk_Mantenimiento_Vehiculo1`
     FOREIGN KEY (`idVehiculo`)
