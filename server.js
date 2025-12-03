@@ -14,6 +14,7 @@ const provinciaRoutes = require("./src/routes/provincias");
 const mantenimientoRoutes = require("./src/routes/mantenimientos");
 const viajesRoutes = require("./src/routes/viajes");
 const expenseRoutes = require("./src/routes/expenses");
+const choferVehiculosRoutes = require("./src/routes/choferVehiculos");
 
 const errorHandler = require("./src/middlewares/errorHandler");
 
@@ -36,6 +37,7 @@ app.use("/api/provincias", provinciaRoutes);
 app.use("/api/mantenimientos", mantenimientoRoutes);
 app.use("/viajes", viajesRoutes);
 app.use("/api/expenses", expenseRoutes);
+app.use("/api/chofer-vehiculos", choferVehiculosRoutes);
 
 // Middleware global de errores
 app.use(errorHandler);
