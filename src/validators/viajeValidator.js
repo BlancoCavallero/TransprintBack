@@ -62,17 +62,11 @@ const crearViajeValidator = [
     .isInt()
     .withMessage("El idCliente debe ser numérico"),
 
-  body("idChofer")
+  body("idChoferVehiculo")
     .notEmpty()
-    .withMessage("El chofer es obligatorio")
+    .withMessage("La relación Chofer-Vehículo es obligatoria")
     .isInt()
-    .withMessage("El idChofer debe ser numérico"),
-
-  body("idVehiculo")
-    .notEmpty()
-    .withMessage("El vehículo es obligatorio")
-    .isInt()
-    .withMessage("El idVehiculo debe ser numérico"),
+    .withMessage("El idChoferVehiculo debe ser numérico"),
 
   body("idLocalidadOrigen")
     .notEmpty()

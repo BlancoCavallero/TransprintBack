@@ -16,7 +16,7 @@ const obtenerViajes = async (filtros = {}) => {
     FROM Viaje v
     LEFT JOIN Cliente c ON v.idCliente = c.idCliente
     LEFT JOIN Persona p ON c.idPersona = p.idPersona
-    LEFT JOIN ChoferXVehiculo cv ON v.idChofer = cv.idChofer AND v.idVehiculo = cv.idVehiculo
+    LEFT JOIN ChoferXVehiculo cv ON v.idChoferVehiculo = cv.idChoferVehiculo
     LEFT JOIN Chofer ch ON cv.idChofer = ch.idChofer
     LEFT JOIN Persona per ON ch.idPersona = per.idPersona
     LEFT JOIN Vehiculo ve ON cv.idVehiculo = ve.idVehiculo
@@ -135,31 +135,24 @@ const crear = async (viaje) => {
     idCliente,
     idLocalidadOrigen,
     idLocalidadDestino,
-    idChofer,
-    idVehiculo,
+    idChoferVehiculo,
   } = viaje;
 
-  // 1. Verificar que chofer y vehículo existan
-  const [choferRows] = await db.query(
-    "SELECT idChofer FROM Chofer WHERE idChofer = ?",
-    [idChofer]
+  // 1. Verificar que ChoferXVehiculo existe
+  const [cvRows] = await db.query(
+    "SELECT idChoferVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
+    [idChoferVehiculo]
   );
-  if (choferRows.length === 0) {
-    throw new Error("El idChofer ingresado no existe");
+  if (cvRows.length === 0) {
+    throw new Error(
+      "La relación Chofer–Vehículo (idChoferVehiculo) ingresada no existe"
+    );
   }
 
-  const [vehRows] = await db.query(
-    "SELECT idVehiculo FROM Vehiculo WHERE idVehiculo = ?",
-    [idVehiculo]
-  );
-  if (vehRows.length === 0) {
-    throw new Error("El idVehiculo ingresado no existe");
-  }
-
-  // 2. Crear viaje con esos datos
+  // 2. Crear viaje con idChoferVehiculo
   const [result] = await db.query(
-    `INSERT INTO Viaje (estado, fecha, kilometros, observaciones, motivoCancelacion, precio, idCliente, idLocalidadOrigen, idLocalidadDestino, idChofer, idVehiculo)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO Viaje (estado, fecha, kilometros, observaciones, motivoCancelacion, precio, idCliente, idLocalidadOrigen, idLocalidadDestino, idChoferVehiculo)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       estado,
       fecha,
@@ -170,8 +163,7 @@ const crear = async (viaje) => {
       idCliente,
       idLocalidadOrigen,
       idLocalidadDestino,
-      idChofer,
-      idVehiculo,
+      idChoferVehiculo,
     ]
   );
 
@@ -195,25 +187,18 @@ const actualizar = async (id, viaje) => {
     idCliente,
     idLocalidadOrigen,
     idLocalidadDestino,
-    idChofer,
-    idVehiculo,
+    idChoferVehiculo,
   } = viaje;
 
-  // 1. Verificar que chofer y vehículo existan
-  const [choferRows] = await db.query(
-    "SELECT idChofer FROM Chofer WHERE idChofer = ?",
-    [idChofer]
+  // 1. Verificar que ChoferXVehiculo existe
+  const [cvRows] = await db.query(
+    "SELECT idChoferVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
+    [idChoferVehiculo]
   );
-  if (choferRows.length === 0) {
-    throw new Error("El idChofer ingresado no existe");
-  }
-
-  const [vehRows] = await db.query(
-    "SELECT idVehiculo FROM Vehiculo WHERE idVehiculo = ?",
-    [idVehiculo]
-  );
-  if (vehRows.length === 0) {
-    throw new Error("El idVehiculo ingresado no existe");
+  if (cvRows.length === 0) {
+    throw new Error(
+      "La relación Chofer–Vehículo (idChoferVehiculo) ingresada no existe"
+    );
   }
 
   // 2. Actualizar viaje con nuevos valores
@@ -221,7 +206,7 @@ const actualizar = async (id, viaje) => {
     `UPDATE Viaje SET 
       estado=?, fecha=?, kilometros=?, observaciones=?, motivoCancelacion=?, 
       precio=?, idCliente=?, idLocalidadOrigen=?, idLocalidadDestino=?,
-      idChofer=?, idVehiculo=?
+      idChoferVehiculo=?
      WHERE idViaje=?`,
     [
       estado,
@@ -233,8 +218,7 @@ const actualizar = async (id, viaje) => {
       idCliente,
       idLocalidadOrigen,
       idLocalidadDestino,
-      idChofer,
-      idVehiculo,
+      idChoferVehiculo,
       id,
     ]
   );
