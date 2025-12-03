@@ -4,10 +4,12 @@ const obtenerTodos = async () => {
   const [rows] = await db.query(`
     SELECT c.idCliente, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono,
-           l.nombre AS localidadNombre, l.codPostal AS localidadCodPostal
+           l.nombre AS localidadNombre, l.codPostal AS localidadCodPostal, l.idProvincia,
+           pr.nombre AS provinciaNombre
     FROM Cliente c
     LEFT JOIN Persona p ON c.idPersona = p.idPersona
     LEFT JOIN Localidad l ON c.idLocalidad = l.idLocalidad
+    LEFT JOIN Provincia pr ON l.idProvincia = pr.idProvincia
   `);
 
   // Map each row into object containing nested persona and localidad
@@ -33,6 +35,8 @@ const obtenerTodos = async () => {
           idLocalidad: r.idLocalidad,
           nombre: r.localidadNombre,
           codPostal: r.localidadCodPostal,
+          idProvincia: r.idProvincia,
+          provincia: r.provinciaNombre,
         }
       : null,
   }));
@@ -45,10 +49,12 @@ const obtenerPorId = async (id) => {
     `
     SELECT c.idCliente, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono,
-           l.nombre AS localidadNombre, l.codPostal AS localidadCodPostal
+           l.nombre AS localidadNombre, l.codPostal AS localidadCodPostal, l.idProvincia,
+           pr.nombre AS provinciaNombre
     FROM Cliente c
     LEFT JOIN Persona p ON c.idPersona = p.idPersona
     LEFT JOIN Localidad l ON c.idLocalidad = l.idLocalidad
+    LEFT JOIN Provincia pr ON l.idProvincia = pr.idProvincia
     WHERE c.idCliente = ?
   `,
     [id]
@@ -78,6 +84,8 @@ const obtenerPorId = async (id) => {
           idLocalidad: r.idLocalidad,
           nombre: r.localidadNombre,
           codPostal: r.localidadCodPostal,
+          idProvincia: r.idProvincia,
+          provincia: r.provinciaNombre,
         }
       : null,
   };
