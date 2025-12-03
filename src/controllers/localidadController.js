@@ -1,11 +1,48 @@
-const { obtenerOCrearLocalidad, obtenerLocalidades, actualizarCodigoPostal } = require("../services/localidadService");
+const {
+  obtenerOCrearLocalidad,
+  crearLocalidadPorId,
+  obtenerLocalidades,
+  actualizarCodigoPostal,
+} = require("../services/localidadService");
 const { successResponse } = require("../utils/response");
 
 const crearLocalidad = async (req, res, next) => {
   try {
-    const { provincia, localidad, codPostal } = req.body;
-    const resultado = await obtenerOCrearLocalidad(provincia, localidad, codPostal);
-    successResponse(res, resultado, "Localidad registrada correctamente");
+    const { provincia, localidad, codPostal, idProvincia } = req.body;
+
+    // Opción A: Si envían idProvincia, usar directamente
+    if (idProvincia) {
+      const resultado = await crearLocalidadPorId(
+        idProvincia,
+        localidad,
+        codPostal
+      );
+      return successResponse(
+        res,
+        resultado,
+        "Localidad registrada correctamente"
+      );
+    }
+
+    // Opción B: Si envían provincia (nombre), buscar/crear via Georef
+    if (provincia) {
+      const resultado = await obtenerOCrearLocalidad(
+        provincia,
+        localidad,
+        codPostal
+      );
+      return successResponse(
+        res,
+        resultado,
+        "Localidad registrada correctamente"
+      );
+    }
+
+    // Error si no envía ninguno
+    throw {
+      status: 400,
+      message: "Debe enviar 'provincia' o 'idProvincia' en el body",
+    };
   } catch (error) {
     next(error);
   }
