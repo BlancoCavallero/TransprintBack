@@ -2,7 +2,7 @@ const db = require("../config/db");
 
 const normalizarFecha = (fecha) => {
   if (!fecha) return null;
-  
+
   // Si ya es string "YYYY-MM-DD", devolver directo
   if (typeof fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
     return fecha;
@@ -191,7 +191,6 @@ const crear = async (data) => {
   // Devolver el objeto completo con vehiculo y chofer anidados
   return await obtenerPorId(id);
 };
-
 
 // Actualizar documentación
 const actualizar = async (id, data) => {
