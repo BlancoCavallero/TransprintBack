@@ -2,7 +2,7 @@ const db = require("../config/db");
 
 const obtenerTodos = async () => {
   const [rows] = await db.query(`
-    SELECT c.idCliente, c.codPostal, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
+    SELECT c.idCliente, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono,
            l.nombre AS localidadNombre, l.codPostal AS localidadCodPostal
     FROM Cliente c
@@ -13,7 +13,6 @@ const obtenerTodos = async () => {
   // Map each row into object containing nested persona and localidad
   const mapped = rows.map((r) => ({
     idCliente: r.idCliente,
-    codPostal: r.codPostal,
     correo: r.correo,
     observaciones: r.observaciones,
     razonSocial: r.razonSocial,
@@ -44,7 +43,7 @@ const obtenerTodos = async () => {
 const obtenerPorId = async (id) => {
   const [rows] = await db.query(
     `
-    SELECT c.idCliente, c.codPostal, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
+    SELECT c.idCliente, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono,
            l.nombre AS localidadNombre, l.codPostal AS localidadCodPostal
     FROM Cliente c
@@ -59,7 +58,6 @@ const obtenerPorId = async (id) => {
   if (!r) return null;
   return {
     idCliente: r.idCliente,
-    codPostal: r.codPostal,
     correo: r.correo,
     observaciones: r.observaciones,
     razonSocial: r.razonSocial,
@@ -92,7 +90,7 @@ const obtenerClientesFiltrados = async (valor) => {
   //falta filtrar por localidad o provincia
   const [rows] = await db.query(
     `
-    SELECT c.idCliente, c.codPostal, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
+    SELECT c.idCliente, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Cliente c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -108,7 +106,6 @@ const obtenerClientesFiltrados = async (valor) => {
   // Map to include persona object
   const mapped = rows.map((r) => ({
     idCliente: r.idCliente,
-    codPostal: r.codPostal,
     correo: r.correo,
     observaciones: r.observaciones,
     razonSocial: r.razonSocial,
@@ -135,15 +132,8 @@ const obtenerPorCorreo = async (correo) => {
 };
 
 const crearCliente = async (cliente) => {
-  const {
-    codPostal,
-    correo,
-    observaciones,
-    razonSocial,
-    tipo,
-    idPersona,
-    idLocalidad,
-  } = cliente;
+  const { correo, observaciones, razonSocial, tipo, idPersona, idLocalidad } =
+    cliente;
 
   //verifico que el idPersona no esté usado en otro cliente
   const [existe] = await db.query("SELECT * FROM Cliente WHERE idPersona = ?", [
@@ -162,7 +152,7 @@ const crearCliente = async (cliente) => {
     throw new Error("El idPersona ingresado no existe ");
   }
 
-    //verifico que la localidad ya esté registrada
+  //verifico que la localidad ya esté registrada
   const [existeLocalidad] = await db.query(
     "SELECT * FROM Localidad WHERE idLocalidad = ?",
     [idLocalidad]
@@ -170,11 +160,10 @@ const crearCliente = async (cliente) => {
   if (existeLocalidad.length === 0) {
     throw new Error("El idLocalidad ingresado no existe ");
   }
-  
+
   const [result] = await db.query(
-    "INSERT INTO Cliente (codPostal, correo, observaciones, razonSocial, tipo, idPersona, idLocalidad) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO Cliente (correo, observaciones, razonSocial, tipo, idPersona, idLocalidad) VALUES (?, ?, ?, ?, ?, ?)",
     [
-      codPostal,
       correo,
       observaciones || null,
       razonSocial,
@@ -189,15 +178,8 @@ const crearCliente = async (cliente) => {
 };
 
 const actualizarCliente = async (id, cliente) => {
-  const {
-    codPostal,
-    correo,
-    observaciones,
-    razonSocial,
-    tipo,
-    idPersona,
-    idLocalidad,
-  } = cliente;
+  const { correo, observaciones, razonSocial, tipo, idPersona, idLocalidad } =
+    cliente;
   //Verifico que el cliente exista
   const [clienteExistente] = await db.query(
     "SELECT * FROM Cliente WHERE idCliente = ?",
@@ -244,17 +226,8 @@ const actualizarCliente = async (id, cliente) => {
   }
 
   await db.query(
-    "UPDATE Cliente SET codPostal = ?, correo = ?, observaciones = ?, razonSocial = ?, tipo = ?, idPersona = ?, idLocalidad = ? WHERE idCliente = ?",
-    [
-      codPostal,
-      correo,
-      observaciones,
-      razonSocial,
-      tipo,
-      idPersona,
-      idLocalidad,
-      id,
-    ]
+    "UPDATE Cliente SET correo = ?, observaciones = ?, razonSocial = ?, tipo = ?, idPersona = ?, idLocalidad = ? WHERE idCliente = ?",
+    [correo, observaciones, razonSocial, tipo, idPersona, idLocalidad, id]
   );
 
   // Return enriched client object
