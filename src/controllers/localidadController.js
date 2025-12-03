@@ -8,13 +8,15 @@ const { successResponse } = require("../utils/response");
 
 const crearLocalidad = async (req, res, next) => {
   try {
-    const { provincia, localidad, codPostal, idProvincia } = req.body;
+    // Aceptamos tanto 'localidad' como 'nombre' (alias) en el body
+    const { provincia, localidad, nombre, codPostal, idProvincia } = req.body;
+    const nombreLocalidad = localidad || nombre;
 
     // Opción A: Si envían idProvincia, usar directamente
     if (idProvincia) {
       const resultado = await crearLocalidadPorId(
         idProvincia,
-        localidad,
+        nombreLocalidad,
         codPostal
       );
       return successResponse(
@@ -28,7 +30,7 @@ const crearLocalidad = async (req, res, next) => {
     if (provincia) {
       const resultado = await obtenerOCrearLocalidad(
         provincia,
-        localidad,
+        nombreLocalidad,
         codPostal
       );
       return successResponse(
