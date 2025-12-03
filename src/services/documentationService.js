@@ -13,6 +13,27 @@ const normalizarFecha = (fecha) => {
   return f.toISOString().split("T")[0];
 };
 
+// Formatea 'YYYY-MM-DD' a 'DD/MM/YYYY' para mostrar en respuestas cortas
+const formatearFechaCorta = (fechaIso) => {
+  if (!fechaIso) return null;
+  // Si ya viene en formato DD/MM/YYYY, devolver directo
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaIso)) return fechaIso;
+  // Si viene en ISO 'YYYY-MM-DD'
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fechaIso)) {
+    const [y, m, d] = fechaIso.split("-");
+    return `${d}/${m}/${y}`;
+  }
+  // Intentar parsear Date
+  const dObj = new Date(fechaIso);
+  if (!isNaN(dObj)) {
+    const dd = String(dObj.getDate()).padStart(2, "0");
+    const mm = String(dObj.getMonth() + 1).padStart(2, "0");
+    const yyyy = dObj.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  return null;
+};
+
 // Obtener todas las documentaciones
 const obtenerTodas = async () => {
   const [rows] = await db.query(`
@@ -160,7 +181,7 @@ const crear = async (data) => {
       detalle,
       nombre,
       renovacionInt,
-      fechaVencimiento,
+      fechaNormalizada,
       idVehiculoInt,
       idChoferInt,
     ]
@@ -187,9 +208,14 @@ const actualizar = async (id, data) => {
   const idVehiculoInt = parseInt(idVehiculo, 10) || null;
   const idChoferInt = parseInt(idChofer, 10) || null;
   //si no viene fecha de vencimiento queda el valor que estaba
+  // Obtener documento actual para valores por defecto
+  const existente = await obtenerPorId(id);
+  if (!existente) {
+    throw new Error("Documentación no encontrada");
+  }
   const fechaNormalizada = fechaVencimiento
     ? normalizarFecha(fechaVencimiento)
-    : resultado.fechaVencimiento;
+    : existente.fechaVencimiento;
   await db.query(
     "UPDATE Documentacion SET detalle = ?, nombre = ?, renovacion = ?, fechaVencimiento = ?, idVehiculo = ?, idChofer = ? WHERE idDocumentacion = ?", //agregar idChofer e idVehículo
     [
