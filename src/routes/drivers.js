@@ -12,14 +12,26 @@ router.get("/nombre/:nombre", driverController.obtenerChoferNombre);
 router.get("/estado/:estado", driverController.obtenerChoferEstado);
 router.get("/dni/:dni", driverController.obtenerChoferDni);
 */
-router.get("/buscar/:valor", driverController.obtenerChoferesFiltradosController);
-router.get("/estado/:estado", driverController.consultarChoferesDisponibilidad);
+router.get(
+  "/buscar/:valor",
+  driverController.obtenerChoferesFiltradosController
+);
 
-router.post("/", validarChofer, validarResultado, driverController.registrarChofer);
-router.put("/:id", validarChofer, validarResultado, driverController.modificarChofer);
+router.post(
+  "/",
+  validarChofer,
+  validarResultado,
+  driverController.registrarChofer
+);
+router.put(
+  "/:id",
+  validarChofer,
+  validarResultado,
+  driverController.modificarChofer
+);
 router.delete("/:id", driverController.eliminarChofer);
 
-router.get("/:id/historial", driverController.consultarHistorial);// probar en postman
+router.get("/:id/historial", driverController.consultarHistorial); // probar en postman
 router.post("/:id/asignar-camion", driverController.asignarVehiculo);
 
 module.exports = router;

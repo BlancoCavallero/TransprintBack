@@ -30,7 +30,17 @@ const eliminarChofer = async (req, res, next) => {
 
 const obtenerChoferes = async (req, res, next) => {
   try {
-    const choferes = await driverService.obtenerChoferes();
+    const { estado } = req.query;
+    let choferes;
+
+    if (estado) {
+      // Si se proporciona estado, consultar disponibilidad filtrada
+      choferes = await driverService.consultarDisponibilidad(estado);
+    } else {
+      // Si no se proporciona estado, devolver todos
+      choferes = await driverService.obtenerChoferes();
+    }
+
     successResponse(res, choferes);
   } catch (error) {
     next(error);
@@ -115,18 +125,6 @@ const consultarHistorial = async (req, res, next) => {
   }
 };
 
-// --- Consultar disponibilidad ---
-const consultarChoferesDisponibilidad = async (req, res, next) => {
-  try {
-    const { estado } = req.params;
-    const resultado = await driverService.consultarDisponibilidad(estado);
-    // Devuelve los choferes filtrados según el estado solicitado
-    successResponse(res, resultado, "Disponibilidad consultada");
-  } catch (error) {
-    next(error);
-  }
-};
-
 // --- Asignar Vehículo ---
 const asignarVehiculo = async (req, res, next) => {
   try {
@@ -148,6 +146,5 @@ module.exports = {
   obtenerChoferId,
   obtenerChoferesFiltradosController,
   consultarHistorial,
-  consultarChoferesDisponibilidad,
   asignarVehiculo,
 };
