@@ -4,22 +4,28 @@ const db = require("../config/db");
 // GET - obtener todos o filtrados
 // ============================================================
 const obtenerViajes = async (filtros = {}) => {
-  // Query to bring viaje with cliente and choferVehiculo (with chofer.persona and vehiculo)
+  // CORRECCIÓN: Hacemos JOIN directo a Chofer y Vehiculo usando las columnas de Viaje.
+  // Opcionalmente hacemos JOIN a ChoferXVehiculo si necesitamos ese ID específico,
+  // pero la relación principal sale de v.idChofer y v.idVehiculo.
   let query = `
     SELECT v.*, 
            c.idCliente AS clienteId, c.razonSocial AS clienteRazonSocial, c.tipo AS clienteTipo, c.correo AS clienteCorreo, c.idPersona AS clienteIdPersona,
            p.nombre AS clienteNombre, p.apellido AS clienteApellido, p.cuit AS clienteCuit,
-           cv.idChoferVehiculo AS choferVehiculoId, cv.idChofer AS cvChoferId, cv.idVehiculo AS cvVehiculoId,
+           
            ch.idChofer AS choferId, ch.dni AS choferDni, ch.idPersona AS choferIdPersona,
            per.nombre AS choferPersonaNombre, per.apellido AS choferPersonaApellido, per.cuit AS choferPersonaCuit,
+           
            ve.idVehiculo AS vehiculoId, ve.patente AS vehiculoPatente, ve.marca AS vehiculoMarca, ve.modelo AS vehiculoModelo, ve.tipo AS vehiculoTipo
+           
     FROM Viaje v
     LEFT JOIN Cliente c ON v.idCliente = c.idCliente
     LEFT JOIN Persona p ON c.idPersona = p.idPersona
-    LEFT JOIN ChoferXVehiculo cv ON v.idChoferVehiculo = cv.idChoferVehiculo
-    LEFT JOIN Chofer ch ON cv.idChofer = ch.idChofer
+    
+    -- Joins corregidos según las columnas reales de Viaje
+    LEFT JOIN Chofer ch ON v.idChofer = ch.idChofer
     LEFT JOIN Persona per ON ch.idPersona = per.idPersona
-    LEFT JOIN Vehiculo ve ON cv.idVehiculo = ve.idVehiculo
+    LEFT JOIN Vehiculo ve ON v.idVehiculo = ve.idVehiculo
+    
     WHERE 1=1
   `;
   const params = [];
@@ -36,28 +42,22 @@ const obtenerViajes = async (filtros = {}) => {
     query += " AND v.idCliente = ?";
     params.push(filtros.idCliente);
   }
-  if (filtros.idChoferVehiculo) {
-    query += " AND cv.idChoferVehiculo = ?";
-    params.push(filtros.idChoferVehiculo);
-  }
-  if (filtros.idLocalidadOrigen) {
-    query += " AND v.idLocalidadOrigen = ?";
-    params.push(filtros.idLocalidadOrigen);
-  }
-  if (filtros.idLocalidadDestino) {
-    query += " AND v.idLocalidadDestino = ?";
-    params.push(filtros.idLocalidadDestino);
+  // Filtro corregido: Si filtras por chofer, usas v.idChofer
+  if (filtros.idChofer) {
+    query += " AND v.idChofer = ?";
+    params.push(filtros.idChofer);
   }
 
   const [rows] = await db.query(query, params);
-  // For each viaje, attach nested cliente, choferVehiculo and gastos
+
   const resultado = [];
   for (const r of rows) {
-    const gastos = await db.query(
-      "SELECT idGasto AS idGasto, detalle, monto, tipo, idViaje FROM Gasto WHERE idViaje = ?",
+    // Traer gastos (esto se mantiene igual)
+    const [gastos] = await db.query(
+      "SELECT idGasto, detalle, monto, tipo, idViaje FROM Gasto WHERE idViaje = ?",
       [r.idViaje]
     );
-    const gastosRows = gastos[0];
+
     const viajeObj = {
       idViaje: r.idViaje,
       estado: r.estado,
@@ -66,55 +66,45 @@ const obtenerViajes = async (filtros = {}) => {
       observaciones: r.observaciones,
       motivoCancelacion: r.motivoCancelacion,
       precio: r.precio,
-      idCliente: r.clienteId || r.idCliente,
-      cliente: r.clienteId
-        ? {
-            idCliente: r.clienteId,
-            razonSocial: r.clienteRazonSocial,
-            tipo: r.clienteTipo,
-            correo: r.clienteCorreo,
-            persona: r.clienteIdPersona
-              ? {
-                  idPersona: r.clienteIdPersona,
-                  nombre: r.clienteNombre,
-                  apellido: r.clienteApellido,
-                  cuit: r.clienteCuit,
-                }
-              : null,
-          }
-        : null,
-      idChoferVehiculo: r.choferVehiculoId || r.idChoferVehiculo,
-      choferVehiculo: r.choferVehiculoId
-        ? {
-            idChoferVehiculo: r.choferVehiculoId,
-            chofer: r.choferId
-              ? {
-                  idChofer: r.choferId,
-                  dni: r.choferDni,
-                  persona: r.choferIdPersona
-                    ? {
-                        idPersona: r.choferIdPersona,
-                        nombre: r.choferPersonaNombre,
-                        apellido: r.choferPersonaApellido,
-                        cuit: r.choferPersonaCuit,
-                      }
-                    : null,
-                }
-              : null,
-            vehiculo: r.vehiculoId
-              ? {
-                  idVehiculo: r.vehiculoId,
-                  patente: r.vehiculoPatente,
-                  marca: r.vehiculoMarca,
-                  modelo: r.vehiculoModelo,
-                  tipo: r.vehiculoTipo,
-                }
-              : null,
-          }
-        : null,
       idLocalidadOrigen: r.idLocalidadOrigen,
       idLocalidadDestino: r.idLocalidadDestino,
-      gastos: gastosRows,
+      
+      // Estructura Cliente
+      idCliente: r.idCliente,
+      cliente: r.clienteId ? {
+        idCliente: r.clienteId,
+        razonSocial: r.clienteRazonSocial,
+        tipo: r.clienteTipo,
+        correo: r.clienteCorreo,
+        persona: r.clienteIdPersona ? {
+           nombre: r.clienteNombre,
+           apellido: r.clienteApellido,
+           cuit: r.clienteCuit
+        } : null
+      } : null,
+
+      // Estructura Chofer (Directo)
+      idChofer: r.choferId,
+      chofer: r.choferId ? {
+         idChofer: r.choferId,
+         dni: r.choferDni,
+         persona: r.choferIdPersona ? {
+            nombre: r.choferPersonaNombre,
+            apellido: r.choferPersonaApellido,
+            cuit: r.choferPersonaCuit
+         } : null
+      } : null,
+
+      // Estructura Vehiculo (Directo)
+      idVehiculo: r.vehiculoId,
+      vehiculo: r.vehiculoId ? {
+         idVehiculo: r.vehiculoId,
+         patente: r.vehiculoPatente,
+         marca: r.vehiculoMarca,
+         modelo: r.vehiculoModelo
+      } : null,
+
+      gastos: gastos
     };
     resultado.push(viajeObj);
   }
@@ -126,51 +116,38 @@ const obtenerViajes = async (filtros = {}) => {
 // ============================================================
 const crear = async (viaje) => {
   const {
-    estado,
-    fecha,
-    kilometros,
-    observaciones,
-    motivoCancelacion,
-    precio,
-    idCliente,
-    idLocalidadOrigen,
-    idLocalidadDestino,
-    idChoferVehiculo,
+    estado, fecha, kilometros, observaciones, motivoCancelacion,
+    precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
+    // Nota: El frontend puede mandarte idChoferVehiculo (la relación) O idChofer e idVehiculo separados.
+    // Asumiré que te mandan el ID de la relación para validar que existe.
+    idChoferVehiculo 
   } = viaje;
 
-  // 1. Verificar que ChoferXVehiculo existe
+  // 1. Obtener idChofer e idVehiculo a partir del idChoferVehiculo
+  // Esto valida que la relación existe y obtiene los IDs individuales para la tabla Viaje
   const [cvRows] = await db.query(
-    "SELECT idChoferVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
+    "SELECT idChofer, idVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
     [idChoferVehiculo]
   );
+  
   if (cvRows.length === 0) {
-    throw new Error(
-      "La relación Chofer–Vehículo (idChoferVehiculo) ingresada no existe"
-    );
+    throw new Error("La relación Chofer–Vehículo ingresada no existe");
   }
 
-  // 2. Crear viaje con idChoferVehiculo
+  const { idChofer, idVehiculo } = cvRows[0];
+
+  // 2. Insertar usando las columnas REALES de la BBDD (idChofer, idVehiculo)
   const [result] = await db.query(
-    `INSERT INTO Viaje (estado, fecha, kilometros, observaciones, motivoCancelacion, precio, idCliente, idLocalidadOrigen, idLocalidadDestino, idChoferVehiculo)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO Viaje (estado, fecha, kilometros, observaciones, motivoCancelacion, precio, idCliente, idLocalidadOrigen, idLocalidadDestino, idChofer, idVehiculo)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      estado,
-      fecha,
-      kilometros,
-      observaciones,
-      motivoCancelacion,
-      precio,
-      idCliente,
-      idLocalidadOrigen,
-      idLocalidadDestino,
-      idChoferVehiculo,
+      estado, fecha, kilometros, observaciones, motivoCancelacion,
+      precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
+      idChofer, idVehiculo
     ]
   );
 
-  const idViaje = result.insertId;
-  // Use obtenerViajes to get enriched object for the single id
-  const viajes = await obtenerViajes({ idViaje });
-  return viajes[0] || { idViaje, ...viaje };
+  return obtenerViajes({ idViaje: result.insertId }).then(rows => rows[0]);
 };
 
 // ============================================================
@@ -178,65 +155,42 @@ const crear = async (viaje) => {
 // ============================================================
 const actualizar = async (id, viaje) => {
   const {
-    estado,
-    fecha,
-    kilometros,
-    observaciones,
-    motivoCancelacion,
-    precio,
-    idCliente,
-    idLocalidadOrigen,
-    idLocalidadDestino,
-    idChoferVehiculo,
+    estado, fecha, kilometros, observaciones, motivoCancelacion,
+    precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
+    idChoferVehiculo 
   } = viaje;
 
-  // 1. Verificar que ChoferXVehiculo existe
+  // 1. Validar y obtener IDs desglosados
   const [cvRows] = await db.query(
-    "SELECT idChoferVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
+    "SELECT idChofer, idVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
     [idChoferVehiculo]
   );
   if (cvRows.length === 0) {
-    throw new Error(
-      "La relación Chofer–Vehículo (idChoferVehiculo) ingresada no existe"
-    );
+    throw new Error("La relación Chofer–Vehículo ingresada no existe");
   }
+  const { idChofer, idVehiculo } = cvRows[0];
 
-  // 2. Actualizar viaje con nuevos valores
+  // 2. Actualizar columnas idChofer e idVehiculo
   await db.query(
     `UPDATE Viaje SET 
       estado=?, fecha=?, kilometros=?, observaciones=?, motivoCancelacion=?, 
       precio=?, idCliente=?, idLocalidadOrigen=?, idLocalidadDestino=?,
-      idChoferVehiculo=?
+      idChofer=?, idVehiculo=?
      WHERE idViaje=?`,
     [
-      estado,
-      fecha,
-      kilometros,
-      observaciones,
-      motivoCancelacion,
-      precio,
-      idCliente,
-      idLocalidadOrigen,
-      idLocalidadDestino,
-      idChoferVehiculo,
-      id,
+      estado, fecha, kilometros, observaciones, motivoCancelacion,
+      precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
+      idChofer, idVehiculo,
+      id
     ]
   );
-  const viajes = await obtenerViajes({ idViaje: id });
-  return viajes[0] || { idViaje: id, ...viaje };
+
+  return obtenerViajes({ idViaje: id }).then(rows => rows[0]);
 };
 
-// ============================================================
-// DELETE - eliminar viaje
-// ============================================================
 const eliminar = async (id) => {
   await db.query("DELETE FROM Viaje WHERE idViaje = ?", [id]);
   return { message: "Viaje eliminado correctamente" };
 };
 
-module.exports = {
-  obtenerViajes,
-  crear,
-  actualizar,
-  eliminar,
-};
+module.exports = { obtenerViajes, crear, actualizar, eliminar };

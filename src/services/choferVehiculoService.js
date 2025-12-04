@@ -1,5 +1,8 @@
 const db = require("../config/db");
 
+// ============================================================
+// LISTAR (GET)
+// ============================================================
 const listarChoferVehiculos = async (filtros = {}) => {
   let query = `
     SELECT cv.idChoferVehiculo, cv.fechaAsignacion,
@@ -28,6 +31,7 @@ const listarChoferVehiculos = async (filtros = {}) => {
   }
 
   const [rows] = await db.query(query, params);
+
   return rows.map((r) => ({
     idChoferVehiculo: r.idChoferVehiculo,
     fechaAsignacion: r.fechaAsignacion,
@@ -64,28 +68,60 @@ const obtenerPorId = async (id) => {
   return rows[0] || null;
 };
 
-const crearChoferVehiculo = async ({ idChofer, idVehiculo, fechaAsignacion = null }) => {
-  // Verificar existencia de chofer
-  const [choferRows] = await db.query("SELECT idChofer FROM Chofer WHERE idChofer = ?", [idChofer]);
-  if (choferRows.length === 0) throw new Error("El idChofer ingresado no existe");
+// ============================================================
+// CREAR (POST)
+// ============================================================
+// NOTA: Se agrego fechaAsignacion = new Date() por defecto
+const crearChoferVehiculo = async ({
+  idChofer,
+  idVehiculo,
+  fechaAsignacion = new Date(),
+}) => {
+  // 1. Validar Chofer
+  const [choferRows] = await db.query(
+    "SELECT idChofer FROM Chofer WHERE idChofer = ?",
+    [idChofer]
+  );
+  if (choferRows.length === 0)
+    throw new Error("El idChofer ingresado no existe");
 
-  // Verificar existencia de vehiculo
-  const [vehRows] = await db.query("SELECT idVehiculo FROM Vehiculo WHERE idVehiculo = ?", [idVehiculo]);
-  if (vehRows.length === 0) throw new Error("El idVehiculo ingresado no existe");
+  // 2. Validar Vehiculo
+  const [vehRows] = await db.query(
+    "SELECT idVehiculo FROM Vehiculo WHERE idVehiculo = ?",
+    [idVehiculo]
+  );
+  if (vehRows.length === 0)
+    throw new Error("El idVehiculo ingresado no existe");
 
-  // Verificar que no exista la relación (uq_chofer_vehiculo)
-  const [existe] = await db.query("SELECT * FROM ChoferXVehiculo WHERE idChofer = ? AND idVehiculo = ?", [idChofer, idVehiculo]);
-  if (existe.length > 0) throw new Error("La relación chofer-vehículo ya existe");
+  // 3. Validar Duplicados Exactos
+  const [existe] = await db.query(
+    "SELECT idChoferVehiculo FROM ChoferXVehiculo WHERE idChofer = ? AND idVehiculo = ?",
+    [idChofer, idVehiculo]
+  );
+  if (existe.length > 0)
+    throw new Error("La relación chofer-vehículo ya existe");
 
+  // 4. Insertar
   const [result] = await db.query(
     "INSERT INTO ChoferXVehiculo (idChofer, idVehiculo, fechaAsignacion) VALUES (?, ?, ?)",
     [idChofer, idVehiculo, fechaAsignacion]
   );
+
   return await obtenerPorId(result.insertId);
 };
 
+// ============================================================
+// ELIMINAR (DELETE)
+// ============================================================
 const eliminarChoferVehiculo = async (id) => {
-  return db.query("DELETE FROM ChoferXVehiculo WHERE idChoferVehiculo = ?", [id]);
+  // Opcional: Validar si tiene viajes antes de borrar para dar un mensaje más claro
+  // const [viajes] = await db.query("SELECT idViaje FROM Viaje WHERE idChoferVehiculo = ?", [id]);
+  // if (viajes.length > 0) throw new Error("No se puede eliminar: Esta asignación tiene viajes históricos.");
+
+  await db.query("DELETE FROM ChoferXVehiculo WHERE idChoferVehiculo = ?", [
+    id,
+  ]);
+  return { message: "Relación eliminada correctamente" };
 };
 
 module.exports = {
