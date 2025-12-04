@@ -7,7 +7,39 @@ const obtenerGastos = async () => {
   const resultado = [];
   for (const r of rows) {
     const viajes = await viajeService.obtenerViajes({ idViaje: r.idViaje });
-    const viaje = viajes[0] || null;
+    const viajeCompleto = viajes[0] || null;
+
+    // Mapear solo los campos necesarios para evitar referencias circulares
+    const viaje = viajeCompleto
+      ? {
+          idViaje: viajeCompleto.idViaje,
+          estado: viajeCompleto.estado,
+          fecha: viajeCompleto.fecha,
+          kilometros: viajeCompleto.kilometros,
+          observaciones: viajeCompleto.observaciones,
+          motivoCancelacion: viajeCompleto.motivoCancelacion,
+          precio: viajeCompleto.precio,
+          idLocalidadOrigen: viajeCompleto.idLocalidadOrigen,
+          idLocalidadDestino: viajeCompleto.idLocalidadDestino,
+          chofer: viajeCompleto.chofer
+            ? {
+                idChofer: viajeCompleto.chofer.idChofer,
+                dni: viajeCompleto.chofer.dni,
+                persona: viajeCompleto.chofer.persona,
+              }
+            : null,
+          vehiculo: viajeCompleto.vehiculo
+            ? {
+                idVehiculo: viajeCompleto.vehiculo.idVehiculo,
+                patente: viajeCompleto.vehiculo.patente,
+                marca: viajeCompleto.vehiculo.marca,
+                modelo: viajeCompleto.vehiculo.modelo,
+                tipo: viajeCompleto.vehiculo.tipo,
+              }
+            : null,
+        }
+      : null;
+
     resultado.push({
       idGasto: r.idGasto,
       detalle: r.detalle,
@@ -25,7 +57,39 @@ const obtenerPorId = async (id) => {
   const r = rows[0];
   if (!r) return null;
   const viajes = await viajeService.obtenerViajes({ idViaje: r.idViaje });
-  const viaje = viajes[0] || null;
+  const viajeCompleto = viajes[0] || null;
+
+  // Mapear solo los campos necesarios para evitar referencias circulares
+  const viaje = viajeCompleto
+    ? {
+        idViaje: viajeCompleto.idViaje,
+        estado: viajeCompleto.estado,
+        fecha: viajeCompleto.fecha,
+        kilometros: viajeCompleto.kilometros,
+        observaciones: viajeCompleto.observaciones,
+        motivoCancelacion: viajeCompleto.motivoCancelacion,
+        precio: viajeCompleto.precio,
+        idLocalidadOrigen: viajeCompleto.idLocalidadOrigen,
+        idLocalidadDestino: viajeCompleto.idLocalidadDestino,
+        chofer: viajeCompleto.chofer
+          ? {
+              idChofer: viajeCompleto.chofer.idChofer,
+              dni: viajeCompleto.chofer.dni,
+              persona: viajeCompleto.chofer.persona,
+            }
+          : null,
+        vehiculo: viajeCompleto.vehiculo
+          ? {
+              idVehiculo: viajeCompleto.vehiculo.idVehiculo,
+              patente: viajeCompleto.vehiculo.patente,
+              marca: viajeCompleto.vehiculo.marca,
+              modelo: viajeCompleto.vehiculo.modelo,
+              tipo: viajeCompleto.vehiculo.tipo,
+            }
+          : null,
+      }
+    : null;
+
   return {
     idGasto: r.idGasto,
     detalle: r.detalle,
@@ -40,7 +104,39 @@ const obtenerPorIdViaje = async (id) => {
   const [rows] = await db.query("SELECT * FROM Gasto WHERE idViaje = ?", [id]);
   // Attach viaje (enriched) for all
   const viajes = await viajeService.obtenerViajes({ idViaje: id });
-  const viaje = viajes[0] || null;
+  const viajeCompleto = viajes[0] || null;
+
+  // Mapear solo los campos necesarios para evitar referencias circulares
+  const viaje = viajeCompleto
+    ? {
+        idViaje: viajeCompleto.idViaje,
+        estado: viajeCompleto.estado,
+        fecha: viajeCompleto.fecha,
+        kilometros: viajeCompleto.kilometros,
+        observaciones: viajeCompleto.observaciones,
+        motivoCancelacion: viajeCompleto.motivoCancelacion,
+        precio: viajeCompleto.precio,
+        idLocalidadOrigen: viajeCompleto.idLocalidadOrigen,
+        idLocalidadDestino: viajeCompleto.idLocalidadDestino,
+        chofer: viajeCompleto.chofer
+          ? {
+              idChofer: viajeCompleto.chofer.idChofer,
+              dni: viajeCompleto.chofer.dni,
+              persona: viajeCompleto.chofer.persona,
+            }
+          : null,
+        vehiculo: viajeCompleto.vehiculo
+          ? {
+              idVehiculo: viajeCompleto.vehiculo.idVehiculo,
+              patente: viajeCompleto.vehiculo.patente,
+              marca: viajeCompleto.vehiculo.marca,
+              modelo: viajeCompleto.vehiculo.modelo,
+              tipo: viajeCompleto.vehiculo.tipo,
+            }
+          : null,
+      }
+    : null;
+
   const mapped = rows.map((r) => ({
     idGasto: r.idGasto,
     detalle: r.detalle,
@@ -71,7 +167,39 @@ const crear = async (gasto) => {
 
   const idGasto = result.insertId;
   const viajes = await viajeService.obtenerViajes({ idViaje });
-  const viaje = viajes[0] || null;
+  const viajeCompleto = viajes[0] || null;
+
+  // Mapear solo los campos necesarios para evitar referencias circulares
+  const viaje = viajeCompleto
+    ? {
+        idViaje: viajeCompleto.idViaje,
+        estado: viajeCompleto.estado,
+        fecha: viajeCompleto.fecha,
+        kilometros: viajeCompleto.kilometros,
+        observaciones: viajeCompleto.observaciones,
+        motivoCancelacion: viajeCompleto.motivoCancelacion,
+        precio: viajeCompleto.precio,
+        idLocalidadOrigen: viajeCompleto.idLocalidadOrigen,
+        idLocalidadDestino: viajeCompleto.idLocalidadDestino,
+        chofer: viajeCompleto.chofer
+          ? {
+              idChofer: viajeCompleto.chofer.idChofer,
+              dni: viajeCompleto.chofer.dni,
+              persona: viajeCompleto.chofer.persona,
+            }
+          : null,
+        vehiculo: viajeCompleto.vehiculo
+          ? {
+              idVehiculo: viajeCompleto.vehiculo.idVehiculo,
+              patente: viajeCompleto.vehiculo.patente,
+              marca: viajeCompleto.vehiculo.marca,
+              modelo: viajeCompleto.vehiculo.modelo,
+              tipo: viajeCompleto.vehiculo.tipo,
+            }
+          : null,
+      }
+    : null;
+
   return { idGasto, detalle, monto, tipo, idViaje, viaje };
 };
 
@@ -92,7 +220,39 @@ const modificarGasto = async (id, gasto) => {
     [detalle, monto, tipo, idViaje, id]
   );
   const viajes = await viajeService.obtenerViajes({ idViaje });
-  const viaje = viajes[0] || null;
+  const viajeCompleto = viajes[0] || null;
+
+  // Mapear solo los campos necesarios para evitar referencias circulares
+  const viaje = viajeCompleto
+    ? {
+        idViaje: viajeCompleto.idViaje,
+        estado: viajeCompleto.estado,
+        fecha: viajeCompleto.fecha,
+        kilometros: viajeCompleto.kilometros,
+        observaciones: viajeCompleto.observaciones,
+        motivoCancelacion: viajeCompleto.motivoCancelacion,
+        precio: viajeCompleto.precio,
+        idLocalidadOrigen: viajeCompleto.idLocalidadOrigen,
+        idLocalidadDestino: viajeCompleto.idLocalidadDestino,
+        chofer: viajeCompleto.chofer
+          ? {
+              idChofer: viajeCompleto.chofer.idChofer,
+              dni: viajeCompleto.chofer.dni,
+              persona: viajeCompleto.chofer.persona,
+            }
+          : null,
+        vehiculo: viajeCompleto.vehiculo
+          ? {
+              idVehiculo: viajeCompleto.vehiculo.idVehiculo,
+              patente: viajeCompleto.vehiculo.patente,
+              marca: viajeCompleto.vehiculo.marca,
+              modelo: viajeCompleto.vehiculo.modelo,
+              tipo: viajeCompleto.vehiculo.tipo,
+            }
+          : null,
+      }
+    : null;
+
   return { idGasto: id, detalle, monto, tipo, idViaje, viaje };
 };
 
