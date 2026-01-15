@@ -153,8 +153,9 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Viaje` (
   `idViaje` INT NOT NULL AUTO_INCREMENT,
-  `estado` VARCHAR(45) NULL,
-  `fecha` DATE NULL,
+  `estado` ENUM('INICIADO','EN CURSO','FINALIZADO','CANCELADO') NOT NULL DEFAULT 'INICIADO',
+  `fechaInicio` DATE NOT NULL,
+  `fechaFin` DATE NOT NULL,
   `kilometros` FLOAT NULL,
   `observaciones` VARCHAR(45) NULL,
   `motivoCancelacion` VARCHAR(45) NULL,

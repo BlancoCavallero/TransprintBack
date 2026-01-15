@@ -1,12 +1,45 @@
 const db = require("../config/db");
 
 // ============================================================
+// Función auxiliar para calcular estado automáticamente
+// ============================================================
+const calcularEstado = (fechaInicio, fechaFin, estadoActual) => {
+  // Si el estado es CANCELADO, se mantiene
+  if (estadoActual === "CANCELADO") {
+    return "CANCELADO";
+  }
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const inicio = new Date(fechaInicio);
+  inicio.setHours(0, 0, 0, 0);
+
+  const fin = new Date(fechaFin);
+  fin.setHours(0, 0, 0, 0);
+
+  // Si hoy < fechaInicio → INICIADO
+  if (hoy < inicio) {
+    return "INICIADO";
+  }
+
+  // Si hoy >= fechaInicio AND hoy <= fechaFin → EN CURSO
+  if (hoy >= inicio && hoy <= fin) {
+    return "EN CURSO";
+  }
+
+  // Si hoy > fechaFin → FINALIZADO
+  if (hoy > fin) {
+    return "FINALIZADO";
+  }
+
+  return "INICIADO"; // Por defecto
+};
+
+// ============================================================
 // GET - obtener todos o filtrados
 // ============================================================
 const obtenerViajes = async (filtros = {}) => {
-  // CORRECCIÓN: Hacemos JOIN directo a Chofer y Vehiculo usando las columnas de Viaje.
-  // Opcionalmente hacemos JOIN a ChoferXVehiculo si necesitamos ese ID específico,
-  // pero la relación principal sale de v.idChofer y v.idVehiculo.
   let query = `
     SELECT v.*, 
            c.idCliente AS clienteId, c.razonSocial AS clienteRazonSocial, c.tipo AS clienteTipo, c.correo AS clienteCorreo, c.idPersona AS clienteIdPersona,
@@ -20,8 +53,6 @@ const obtenerViajes = async (filtros = {}) => {
     FROM Viaje v
     LEFT JOIN Cliente c ON v.idCliente = c.idCliente
     LEFT JOIN Persona p ON c.idPersona = p.idPersona
-    
-    -- Joins corregidos según las columnas reales de Viaje
     LEFT JOIN Chofer ch ON v.idChofer = ch.idChofer
     LEFT JOIN Persona per ON ch.idPersona = per.idPersona
     LEFT JOIN Vehiculo ve ON v.idVehiculo = ve.idVehiculo
@@ -42,7 +73,6 @@ const obtenerViajes = async (filtros = {}) => {
     query += " AND v.idCliente = ?";
     params.push(filtros.idCliente);
   }
-  // Filtro corregido: Si filtras por chofer, usas v.idChofer
   if (filtros.idChofer) {
     query += " AND v.idChofer = ?";
     params.push(filtros.idChofer);
@@ -52,16 +82,20 @@ const obtenerViajes = async (filtros = {}) => {
 
   const resultado = [];
   for (const r of rows) {
-    // Traer gastos (esto se mantiene igual)
+    // Obtener gastos
     const [gastos] = await db.query(
       "SELECT idGasto, detalle, monto, tipo, idViaje FROM Gasto WHERE idViaje = ?",
       [r.idViaje]
     );
 
+    // Calcular estado automáticamente
+    const estadoCalculado = calcularEstado(r.fechaInicio, r.fechaFin, r.estado);
+
     const viajeObj = {
       idViaje: r.idViaje,
-      estado: r.estado,
-      fecha: r.fecha,
+      estado: estadoCalculado,
+      fechaInicio: r.fechaInicio,
+      fechaFin: r.fechaFin,
       kilometros: r.kilometros,
       observaciones: r.observaciones,
       motivoCancelacion: r.motivoCancelacion,
@@ -83,7 +117,7 @@ const obtenerViajes = async (filtros = {}) => {
         } : null
       } : null,
 
-      // Estructura Chofer (Directo)
+      // Estructura Chofer
       idChofer: r.choferId,
       chofer: r.choferId ? {
          idChofer: r.choferId,
@@ -95,7 +129,7 @@ const obtenerViajes = async (filtros = {}) => {
          } : null
       } : null,
 
-      // Estructura Vehiculo (Directo)
+      // Estructura Vehiculo
       idVehiculo: r.vehiculoId,
       vehiculo: r.vehiculoId ? {
          idVehiculo: r.vehiculoId,
@@ -116,15 +150,12 @@ const obtenerViajes = async (filtros = {}) => {
 // ============================================================
 const crear = async (viaje) => {
   const {
-    estado, fecha, kilometros, observaciones, motivoCancelacion,
+    fechaInicio, fechaFin, kilometros, observaciones, motivoCancelacion,
     precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
-    // Nota: El frontend puede mandarte idChoferVehiculo (la relación) O idChofer e idVehiculo separados.
-    // Asumiré que te mandan el ID de la relación para validar que existe.
     idChoferVehiculo 
   } = viaje;
 
-  // 1. Obtener idChofer e idVehiculo a partir del idChoferVehiculo
-  // Esto valida que la relación existe y obtiene los IDs individuales para la tabla Viaje
+  // Obtener idChofer e idVehiculo a partir del idChoferVehiculo
   const [cvRows] = await db.query(
     "SELECT idChofer, idVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
     [idChoferVehiculo]
@@ -136,13 +167,16 @@ const crear = async (viaje) => {
 
   const { idChofer, idVehiculo } = cvRows[0];
 
-  // 2. Insertar usando las columnas REALES de la BBDD (idChofer, idVehiculo)
+  // Calcular estado al crear (siempre INICIADO)
+  const estadoInicial = "INICIADO";
+
+  // Insertar usando fechaInicio y fechaFin
   const [result] = await db.query(
-    `INSERT INTO Viaje (estado, fecha, kilometros, observaciones, motivoCancelacion, precio, idCliente, idLocalidadOrigen, idLocalidadDestino, idChofer, idVehiculo)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO Viaje (estado, fechaInicio, fechaFin, kilometros, observaciones, motivoCancelacion, precio, idCliente, idLocalidadOrigen, idLocalidadDestino, idChofer, idVehiculo)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      estado, fecha, kilometros, observaciones, motivoCancelacion,
-      precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
+      estadoInicial, fechaInicio, fechaFin, kilometros, observaciones, 
+      motivoCancelacion, precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
       idChofer, idVehiculo
     ]
   );
@@ -155,32 +189,57 @@ const crear = async (viaje) => {
 // ============================================================
 const actualizar = async (id, viaje) => {
   const {
-    estado, fecha, kilometros, observaciones, motivoCancelacion,
+    fechaInicio, fechaFin, kilometros, observaciones, motivoCancelacion,
     precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
-    idChoferVehiculo 
+    estado, idChoferVehiculo 
   } = viaje;
 
-  // 1. Validar y obtener IDs desglosados
-  const [cvRows] = await db.query(
-    "SELECT idChofer, idVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
-    [idChoferVehiculo]
+  // Obtener viaje actual para valores por defecto
+  const [viajeActual] = await db.query(
+    "SELECT * FROM Viaje WHERE idViaje = ?",
+    [id]
   );
-  if (cvRows.length === 0) {
-    throw new Error("La relación Chofer–Vehículo ingresada no existe");
-  }
-  const { idChofer, idVehiculo } = cvRows[0];
 
-  // 2. Actualizar columnas idChofer e idVehiculo
+  if (viajeActual.length === 0) {
+    throw new Error("Viaje no encontrado");
+  }
+
+  const actual = viajeActual[0];
+
+  // Si se proporciona idChoferVehiculo, validar y obtener IDs
+  let idChofer = actual.idChofer;
+  let idVehiculo = actual.idVehiculo;
+
+  if (idChoferVehiculo) {
+    const [cvRows] = await db.query(
+      "SELECT idChofer, idVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
+      [idChoferVehiculo]
+    );
+    if (cvRows.length === 0) {
+      throw new Error("La relación Chofer–Vehículo ingresada no existe");
+    }
+    idChofer = cvRows[0].idChofer;
+    idVehiculo = cvRows[0].idVehiculo;
+  }
+
+  // Usar valores actuales si no se proporcionan
+  const nuevaFechaInicio = fechaInicio || actual.fechaInicio;
+  const nuevaFechaFin = fechaFin || actual.fechaFin;
+  const nuevoEstado = estado || actual.estado;
+
+  // Actualizar en BD
   await db.query(
     `UPDATE Viaje SET 
-      estado=?, fecha=?, kilometros=?, observaciones=?, motivoCancelacion=?, 
+      fechaInicio=?, fechaFin=?, kilometros=?, observaciones=?, motivoCancelacion=?, 
       precio=?, idCliente=?, idLocalidadOrigen=?, idLocalidadDestino=?,
-      idChofer=?, idVehiculo=?
+      idChofer=?, idVehiculo=?, estado=?
      WHERE idViaje=?`,
     [
-      estado, fecha, kilometros, observaciones, motivoCancelacion,
-      precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
-      idChofer, idVehiculo,
+      nuevaFechaInicio, nuevaFechaFin, kilometros || actual.kilometros,
+      observaciones || actual.observaciones, motivoCancelacion || actual.motivoCancelacion,
+      precio || actual.precio, idCliente || actual.idCliente,
+      idLocalidadOrigen || actual.idLocalidadOrigen, idLocalidadDestino || actual.idLocalidadDestino,
+      idChofer, idVehiculo, nuevoEstado,
       id
     ]
   );

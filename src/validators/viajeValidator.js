@@ -13,37 +13,28 @@ const esFechaFutura = (fechaStr) => {
 const esFechaPasadaOHoy = (fechaStr) => !esFechaFutura(fechaStr);
 
 const crearViajeValidator = [
-  body("fecha")
+  body("fechaInicio")
     .notEmpty()
-    .withMessage("La fecha es obligatoria")
+    .withMessage("La fechaInicio es obligatoria")
     .isISO8601()
-    .withMessage("La fecha debe tener formato válido (YYYY-MM-DD)"),
+    .withMessage("La fechaInicio debe tener formato válido (YYYY-MM-DD)"),
 
-  body("estado")
+  body("fechaFin")
     .notEmpty()
-    .withMessage("El estado es obligatorio")
-    .isIn(["Pendiente", "Activo", "Finalizado", "Cancelado"])
-    .withMessage("Estado inválido")
-    .custom((estado, { req }) => {
-      const fecha = req.body.fecha;
-      if (!fecha) return true;
-
-      // Estado pendiente SOLO si la fecha es futura
-      if (estado === "Pendiente" && esFechaPasadaOHoy(fecha)) {
-        throw new Error(
-          "Un viaje con fecha pasada o de hoy no puede estar 'Pendiente'."
-        );
+    .withMessage("La fechaFin es obligatoria")
+    .isISO8601()
+    .withMessage("La fechaFin debe tener formato válido (YYYY-MM-DD)")
+    .custom((value, { req }) => {
+      if (new Date(value) < new Date(req.body.fechaInicio)) {
+        throw new Error("La fechaFin no puede ser anterior a la fechaInicio");
       }
-
-      // Estado activo SOLO si la fecha es hoy o pasada
-      if (estado === "Activo" && esFechaFutura(fecha)) {
-        throw new Error(
-          "Un viaje con fecha futura no puede estar 'Activo'. Debe estar 'Pendiente'."
-        );
-      }
-
       return true;
     }),
+
+  body("estado")
+    .optional()
+    .isIn(["INICIADO", "EN CURSO", "FINALIZADO", "CANCELADO"])
+    .withMessage("Estado inválido. Valores permitidos: INICIADO, EN CURSO, FINALIZADO, CANCELADO"),
 
   body("precio")
     .notEmpty()
@@ -82,31 +73,27 @@ const crearViajeValidator = [
 ];
 
 const actualizarViajeValidator = [
-  body("fecha")
+  body("fechaInicio")
     .optional()
     .isISO8601()
-    .withMessage("La fecha debe tener un formato válido"),
+    .withMessage("La fechaInicio debe tener un formato válido (YYYY-MM-DD)"),
+
+  body("fechaFin")
+    .optional()
+    .isISO8601()
+    .withMessage("La fechaFin debe tener un formato válido (YYYY-MM-DD)")
+    .custom((value, { req }) => {
+      const fechaInicio = req.body.fechaInicio || req.existingViajeInicio;
+      if (value && fechaInicio && new Date(value) < new Date(fechaInicio)) {
+        throw new Error("La fechaFin no puede ser anterior a la fechaInicio");
+      }
+      return true;
+    }),
 
   body("estado")
     .optional()
-    .isIn(["Pendiente", "Activo", "Finalizado", "Cancelado"])
-    .withMessage("Estado inválido")
-    .custom((estado, { req }) => {
-      const fecha = req.body.fecha || req.existingViajeFecha;
-      if (!fecha || !estado) return true;
-
-      if (estado === "Pendiente" && esFechaPasadaOHoy(fecha)) {
-        throw new Error(
-          "Un viaje con fecha pasada o de hoy no puede estar 'pendiente'."
-        );
-      }
-
-      if (estado === "Activo" && esFechaFutura(fecha)) {
-        throw new Error("Un viaje con fecha futura no puede estar 'activo'.");
-      }
-
-      return true;
-    }),
+    .isIn(["INICIADO", "EN CURSO", "FINALIZADO", "CANCELADO"])
+    .withMessage("Estado inválido"),
 
   body("precio")
     .optional()
