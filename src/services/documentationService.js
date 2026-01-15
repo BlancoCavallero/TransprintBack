@@ -1,4 +1,7 @@
 const db = require("../config/db");
+const {
+  DOCUMENTO_TIPO_ENTIDAD,
+} = require("../validators/documentationValidator");
 
 const normalizarFecha = (fecha) => {
   if (!fecha) return null;
@@ -34,6 +37,18 @@ const formatearFechaCorta = (fechaIso) => {
   return null;
 };
 
+// Determina el tipoEntidad basado en el nombre del documento
+const determinarTipoEntidad = (nombre, tipoEntidadProvidado) => {
+  // Si viene explícitamente del cliente, usarlo
+  if (tipoEntidadProvidado) {
+    return tipoEntidadProvidado;
+  }
+
+  // Si el nombre está en el mapeo, usar el tipo por defecto
+  const nombreUpper = nombre ? nombre.toUpperCase() : "";
+  return DOCUMENTO_TIPO_ENTIDAD[nombreUpper] || null;
+};
+
 // Obtener todas las documentaciones
 const obtenerTodas = async () => {
   const [rows] = await db.query(`
@@ -55,6 +70,7 @@ const obtenerTodas = async () => {
       idDocumentacion: doc.idDocumentacion,
       detalle: doc.detalle,
       nombre: doc.nombre,
+      tipoEntidad: doc.tipoEntidad,
       renovacion: doc.renovacion,
       fechaVencimiento: formatearFechaCorta(vencimiento),
       estado,
@@ -113,6 +129,7 @@ const obtenerPorId = async (id) => {
     idDocumentacion: r.idDocumentacion,
     detalle: r.detalle,
     nombre: r.nombre,
+    tipoEntidad: r.tipoEntidad,
     renovacion: r.renovacion,
     fechaVencimiento: formatearFechaCorta(vencimiento),
     estado,
@@ -160,28 +177,54 @@ const crear = async (data) => {
     fechaVencimiento,
     idVehiculo,
     idChofer,
+    tipoEntidad,
   } = data;
 
-  const [existeChofer] = await db.query(
-    "SELECT * FROM Chofer WHERE idChofer = ?",
-    [idChofer]
-  );
-  if (existeChofer.length === 0) {
-    throw new Error("El idChofer ingresado no existe");
+  // Determinar tipoEntidad
+  let tipoEntidadFinal = determinarTipoEntidad(nombre, tipoEntidad);
+  if (!tipoEntidadFinal) {
+    throw new Error(
+      "No se pudo determinar el tipoEntidad. Proporciónelo explícitamente."
+    );
+  }
+
+  // Validar que existe el Chofer si tipoEntidad es CHOFER
+  if (tipoEntidadFinal === "CHOFER") {
+    const [existeChofer] = await db.query(
+      "SELECT * FROM Chofer WHERE idChofer = ?",
+      [idChofer]
+    );
+    if (existeChofer.length === 0) {
+      throw new Error("El idChofer ingresado no existe");
+    }
+  }
+
+  // Validar que existe el Vehículo si tipoEntidad es VEHICULO
+  if (tipoEntidadFinal === "VEHICULO") {
+    const [existeVehiculo] = await db.query(
+      "SELECT * FROM Vehiculo WHERE idVehiculo = ?",
+      [idVehiculo]
+    );
+    if (existeVehiculo.length === 0) {
+      throw new Error("El idVehiculo ingresado no existe");
+    }
   }
 
   const renovacionInt = parseInt(renovacion, 10) || null;
-  const idVehiculoInt = parseInt(idVehiculo, 10) || null;
-  const idChoferInt = parseInt(idChofer, 10) || null;
+  const idVehiculoInt =
+    tipoEntidadFinal === "VEHICULO" ? parseInt(idVehiculo, 10) || null : null;
+  const idChoferInt =
+    tipoEntidadFinal === "CHOFER" ? parseInt(idChofer, 10) || null : null;
 
   const fechaNormalizada = normalizarFecha(fechaVencimiento);
   const [result] = await db.query(
-    "INSERT INTO Documentacion (detalle, nombre, renovacion, fechaVencimiento, idVehiculo, idChofer) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO Documentacion (detalle, nombre, renovacion, fechaVencimiento, tipoEntidad, idVehiculo, idChofer) VALUES (?, ?, ?, ?, ?, ?, ?)",
     [
       detalle,
       nombre,
       renovacionInt,
       fechaNormalizada,
+      tipoEntidadFinal,
       idVehiculoInt,
       idChoferInt,
     ]
@@ -201,27 +244,65 @@ const actualizar = async (id, data) => {
     fechaVencimiento,
     idVehiculo,
     idChofer,
+    tipoEntidad,
   } = data;
 
-  const renovacionInt = parseInt(renovacion, 10) || null;
-  const idVehiculoInt = parseInt(idVehiculo, 10) || null;
-  const idChoferInt = parseInt(idChofer, 10) || null;
-  //si no viene fecha de vencimiento queda el valor que estaba
   // Obtener documento actual para valores por defecto
   const existente = await obtenerPorId(id);
   if (!existente) {
     throw new Error("Documentación no encontrada");
   }
+
+  // Determinar tipoEntidad (usar el proporcionado, o el existente, o calcular del nombre)
+  let tipoEntidadFinal = tipoEntidad || existente.tipoEntidad;
+  if (!tipoEntidadFinal) {
+    tipoEntidadFinal = determinarTipoEntidad(nombre, tipoEntidad);
+  }
+  if (!tipoEntidadFinal) {
+    throw new Error(
+      "No se pudo determinar el tipoEntidad. Proporciónelo explícitamente."
+    );
+  }
+
+  // Validar que existe el Chofer si tipoEntidad es CHOFER
+  if (tipoEntidadFinal === "CHOFER" && idChofer) {
+    const [existeChofer] = await db.query(
+      "SELECT * FROM Chofer WHERE idChofer = ?",
+      [idChofer]
+    );
+    if (existeChofer.length === 0) {
+      throw new Error("El idChofer ingresado no existe");
+    }
+  }
+
+  // Validar que existe el Vehículo si tipoEntidad es VEHICULO
+  if (tipoEntidadFinal === "VEHICULO" && idVehiculo) {
+    const [existeVehiculo] = await db.query(
+      "SELECT * FROM Vehiculo WHERE idVehiculo = ?",
+      [idVehiculo]
+    );
+    if (existeVehiculo.length === 0) {
+      throw new Error("El idVehiculo ingresado no existe");
+    }
+  }
+
+  const renovacionInt = parseInt(renovacion, 10) || existente.renovacion;
+  const idVehiculoInt =
+    tipoEntidadFinal === "VEHICULO" ? parseInt(idVehiculo, 10) || null : null;
+  const idChoferInt =
+    tipoEntidadFinal === "CHOFER" ? parseInt(idChofer, 10) || null : null;
   const fechaNormalizada = fechaVencimiento
     ? normalizarFecha(fechaVencimiento)
     : existente.fechaVencimiento;
+
   await db.query(
-    "UPDATE Documentacion SET detalle = ?, nombre = ?, renovacion = ?, fechaVencimiento = ?, idVehiculo = ?, idChofer = ? WHERE idDocumentacion = ?", //agregar idChofer e idVehículo
+    "UPDATE Documentacion SET detalle = ?, nombre = ?, renovacion = ?, fechaVencimiento = ?, tipoEntidad = ?, idVehiculo = ?, idChofer = ? WHERE idDocumentacion = ?",
     [
       detalle,
       nombre,
       renovacionInt,
       fechaNormalizada,
+      tipoEntidadFinal,
       idVehiculoInt,
       idChoferInt,
       id,
