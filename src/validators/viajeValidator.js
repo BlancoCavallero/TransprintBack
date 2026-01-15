@@ -34,7 +34,9 @@ const crearViajeValidator = [
   body("estado")
     .optional()
     .isIn(["INICIADO", "EN CURSO", "FINALIZADO", "CANCELADO"])
-    .withMessage("Estado inválido. Valores permitidos: INICIADO, EN CURSO, FINALIZADO, CANCELADO"),
+    .withMessage(
+      "Estado inválido. Valores permitidos: INICIADO, EN CURSO, FINALIZADO, CANCELADO"
+    ),
 
   body("precio")
     .notEmpty()

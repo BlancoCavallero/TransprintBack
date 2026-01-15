@@ -102,43 +102,53 @@ const obtenerViajes = async (filtros = {}) => {
       precio: r.precio,
       idLocalidadOrigen: r.idLocalidadOrigen,
       idLocalidadDestino: r.idLocalidadDestino,
-      
+
       // Estructura Cliente
       idCliente: r.idCliente,
-      cliente: r.clienteId ? {
-        idCliente: r.clienteId,
-        razonSocial: r.clienteRazonSocial,
-        tipo: r.clienteTipo,
-        correo: r.clienteCorreo,
-        persona: r.clienteIdPersona ? {
-           nombre: r.clienteNombre,
-           apellido: r.clienteApellido,
-           cuit: r.clienteCuit
-        } : null
-      } : null,
+      cliente: r.clienteId
+        ? {
+            idCliente: r.clienteId,
+            razonSocial: r.clienteRazonSocial,
+            tipo: r.clienteTipo,
+            correo: r.clienteCorreo,
+            persona: r.clienteIdPersona
+              ? {
+                  nombre: r.clienteNombre,
+                  apellido: r.clienteApellido,
+                  cuit: r.clienteCuit,
+                }
+              : null,
+          }
+        : null,
 
       // Estructura Chofer
       idChofer: r.choferId,
-      chofer: r.choferId ? {
-         idChofer: r.choferId,
-         dni: r.choferDni,
-         persona: r.choferIdPersona ? {
-            nombre: r.choferPersonaNombre,
-            apellido: r.choferPersonaApellido,
-            cuit: r.choferPersonaCuit
-         } : null
-      } : null,
+      chofer: r.choferId
+        ? {
+            idChofer: r.choferId,
+            dni: r.choferDni,
+            persona: r.choferIdPersona
+              ? {
+                  nombre: r.choferPersonaNombre,
+                  apellido: r.choferPersonaApellido,
+                  cuit: r.choferPersonaCuit,
+                }
+              : null,
+          }
+        : null,
 
       // Estructura Vehiculo
       idVehiculo: r.vehiculoId,
-      vehiculo: r.vehiculoId ? {
-         idVehiculo: r.vehiculoId,
-         patente: r.vehiculoPatente,
-         marca: r.vehiculoMarca,
-         modelo: r.vehiculoModelo
-      } : null,
+      vehiculo: r.vehiculoId
+        ? {
+            idVehiculo: r.vehiculoId,
+            patente: r.vehiculoPatente,
+            marca: r.vehiculoMarca,
+            modelo: r.vehiculoModelo,
+          }
+        : null,
 
-      gastos: gastos
+      gastos: gastos,
     };
     resultado.push(viajeObj);
   }
@@ -150,9 +160,16 @@ const obtenerViajes = async (filtros = {}) => {
 // ============================================================
 const crear = async (viaje) => {
   const {
-    fechaInicio, fechaFin, kilometros, observaciones, motivoCancelacion,
-    precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
-    idChoferVehiculo 
+    fechaInicio,
+    fechaFin,
+    kilometros,
+    observaciones,
+    motivoCancelacion,
+    precio,
+    idCliente,
+    idLocalidadOrigen,
+    idLocalidadDestino,
+    idChoferVehiculo,
   } = viaje;
 
   // Obtener idChofer e idVehiculo a partir del idChoferVehiculo
@@ -160,7 +177,7 @@ const crear = async (viaje) => {
     "SELECT idChofer, idVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
     [idChoferVehiculo]
   );
-  
+
   if (cvRows.length === 0) {
     throw new Error("La relación Chofer–Vehículo ingresada no existe");
   }
@@ -175,13 +192,22 @@ const crear = async (viaje) => {
     `INSERT INTO Viaje (estado, fechaInicio, fechaFin, kilometros, observaciones, motivoCancelacion, precio, idCliente, idLocalidadOrigen, idLocalidadDestino, idChofer, idVehiculo)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      estadoInicial, fechaInicio, fechaFin, kilometros, observaciones, 
-      motivoCancelacion, precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
-      idChofer, idVehiculo
+      estadoInicial,
+      fechaInicio,
+      fechaFin,
+      kilometros,
+      observaciones,
+      motivoCancelacion,
+      precio,
+      idCliente,
+      idLocalidadOrigen,
+      idLocalidadDestino,
+      idChofer,
+      idVehiculo,
     ]
   );
 
-  return obtenerViajes({ idViaje: result.insertId }).then(rows => rows[0]);
+  return obtenerViajes({ idViaje: result.insertId }).then((rows) => rows[0]);
 };
 
 // ============================================================
@@ -189,9 +215,17 @@ const crear = async (viaje) => {
 // ============================================================
 const actualizar = async (id, viaje) => {
   const {
-    fechaInicio, fechaFin, kilometros, observaciones, motivoCancelacion,
-    precio, idCliente, idLocalidadOrigen, idLocalidadDestino,
-    estado, idChoferVehiculo 
+    fechaInicio,
+    fechaFin,
+    kilometros,
+    observaciones,
+    motivoCancelacion,
+    precio,
+    idCliente,
+    idLocalidadOrigen,
+    idLocalidadDestino,
+    estado,
+    idChoferVehiculo,
   } = viaje;
 
   // Obtener viaje actual para valores por defecto
@@ -235,16 +269,23 @@ const actualizar = async (id, viaje) => {
       idChofer=?, idVehiculo=?, estado=?
      WHERE idViaje=?`,
     [
-      nuevaFechaInicio, nuevaFechaFin, kilometros || actual.kilometros,
-      observaciones || actual.observaciones, motivoCancelacion || actual.motivoCancelacion,
-      precio || actual.precio, idCliente || actual.idCliente,
-      idLocalidadOrigen || actual.idLocalidadOrigen, idLocalidadDestino || actual.idLocalidadDestino,
-      idChofer, idVehiculo, nuevoEstado,
-      id
+      nuevaFechaInicio,
+      nuevaFechaFin,
+      kilometros || actual.kilometros,
+      observaciones || actual.observaciones,
+      motivoCancelacion || actual.motivoCancelacion,
+      precio || actual.precio,
+      idCliente || actual.idCliente,
+      idLocalidadOrigen || actual.idLocalidadOrigen,
+      idLocalidadDestino || actual.idLocalidadDestino,
+      idChofer,
+      idVehiculo,
+      nuevoEstado,
+      id,
     ]
   );
 
-  return obtenerViajes({ idViaje: id }).then(rows => rows[0]);
+  return obtenerViajes({ idViaje: id }).then((rows) => rows[0]);
 };
 
 const eliminar = async (id) => {
