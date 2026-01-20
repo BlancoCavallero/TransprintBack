@@ -159,7 +159,7 @@ Response (200):
 ### OBTENER TODOS LOS CHOFERES (GET)
 ```http
 GET /api/drivers
-GET /api/drivers?estado=Libre
+GET /api/drivers?estado=Libre ( Anotacion axel:Estos estados funcionan para la documentacion?.)
 GET /api/drivers?estado=Ocupado
 
 Response (200):
@@ -200,6 +200,8 @@ Busca por nombre, apellido o DNI
 ```
 
 ### CREAR CHOFER (POST)
+
+#### ⭐ OPCIÓN 1: Con Persona Existente (forma antigua)
 ```http
 POST /api/drivers
 Content-Type: application/json
@@ -216,12 +218,56 @@ Response (201):
     "idChofer": 1,
     "dni": 12345678,
     "estadoDisponibilidad": "Inhabilitado",  // Inicia en Inhabilitado
-    "idPersona": 1
+    "idPersona": 1,
+    "persona": {
+      "idPersona": 1,
+      "nombre": "Juan",
+      "apellido": "Pérez",
+      "cuit": "20123456789",
+      "telefono": "1123456789"
+    }
   }
 }
-
-⚠️ Estado inicial: "Inhabilitado" (hasta que valide documentación)
 ```
+
+#### ⭐ OPCIÓN 2: Crear Chofer Y Persona AL MISMO TIEMPO (nueva - recomendado)
+```http
+POST /api/drivers
+Content-Type: application/json
+
+{
+  "dni": 12345678,                      // Obligatorio - Único
+  "nombre": "Juan",                     // Obligatorio si NO envías idPersona
+  "apellido": "Pérez",                  // Obligatorio si NO envías idPersona
+  "cuit": "20123456789",                // Obligatorio si NO envías idPersona
+  "telefono": "1123456789"              // Obligatorio si NO envías idPersona
+}
+
+Response (201):
+{
+  "status": "success",
+  "data": {
+    "idChofer": 2,
+    "dni": 12345678,
+    "estadoDisponibilidad": "Inhabilitado",
+    "idPersona": 2,
+    "persona": {
+      "idPersona": 2,
+      "nombre": "Juan",
+      "apellido": "Pérez",
+      "cuit": "20123456789",
+      "telefono": "1123456789"
+    }
+  }
+}
+```
+
+✅ **La Persona se crea automáticamente**
+
+⚠️ **Importante:**
+- Estado inicial: "Inhabilitado" (hasta que valide documentación)
+- Debes enviar SOLO `idPersona` O los datos completos de persona, no ambos
+- Si creas Persona integrada, el CUIT no debe existir en BD
 
 ### ACTUALIZAR CHOFER (PUT)
 ```http
@@ -230,12 +276,38 @@ Content-Type: application/json
 
 {
   "dni": 12345679,                      // Opcional
-  "estadoDisponibilidad": "Libre"       // Opcional
+  "estadoDisponibilidad": "Libre",      // Opcional
+  
+  // Datos de Persona (Opcional - editar nombre, apellido, teléfono, etc.)
+  "nombre": "Juan Nuevo",               // Opcional
+  "apellido": "Pérez García",           // Opcional
+  "cuit": "20123456789",                // Opcional (debe ser único)
+  "telefono": "1199999999"              // Opcional
 }
 
 Response (200):
-{...chofer actualizado...}
+{
+  "status": "success",
+  "data": {
+    "idChofer": 1,
+    "dni": 12345679,
+    "estadoDisponibilidad": "Libre",
+    "idPersona": 1,
+    "persona": {
+      "idPersona": 1,
+      "nombre": "Juan Nuevo",
+      "apellido": "Pérez García",
+      "cuit": "20123456789",
+      "telefono": "1199999999"
+    }
+  }
+}
 ```
+
+⚠️ **Nota:** Puedes actualizar cualquier combinación de campos. Ejemplos:
+- Solo dni: `{dni: 87654321}`
+- Solo datos de persona: `{nombre: "Juan", apellido: "Pérez"}`
+- Mezcla de ambos: `{dni: 87654321, nombre: "Juan", telefono: "1199999999"}`
 
 ### ELIMINAR CHOFER (DELETE)
 ```http
@@ -395,15 +467,17 @@ Busca por razonSocial, tipo o correo
 ```
 
 ### CREAR CLIENTE (POST)
+
+#### ⭐ OPCIÓN 1: Con Persona Existente (forma antigua)
 ```http
 POST /api/clients
 Content-Type: application/json
 
 {
   "razonSocial": "Transporte XYZ",      // Obligatorio
-  "tipo": "empresa",                    // Obligatorio
+  "tipo": "Empresa",                    // Obligatorio - "Productor" o "Empresa"
   "correo": "contacto@xyz.com",         // Obligatorio
-  "idPersona": 1,                       // Obligatorio
+  "idPersona": 1,                       // Obligatorio - Debe existir Persona
   "idLocalidad": 1,                     // Obligatorio
   "observaciones": "Cliente vip"        // Opcional
 }
@@ -411,9 +485,65 @@ Content-Type: application/json
 Response (201):
 {
   "status": "success",
-  "data": {...cliente creado...}
+  "data": {
+    "idCliente": 1,
+    "razonSocial": "Transporte XYZ",
+    "tipo": "Empresa",
+    "correo": "contacto@xyz.com",
+    "idPersona": 1,
+    "idLocalidad": 1,
+    "observaciones": "Cliente vip",
+    "persona": {...},
+    "localidad": {...}
+  }
 }
 ```
+
+#### ⭐ OPCIÓN 2: Crear Cliente Y Persona AL MISMO TIEMPO (nueva - recomendado)
+```http
+POST /api/clients
+Content-Type: application/json
+
+{
+  "razonSocial": "Transporte ABC",      // Obligatorio
+  "tipo": "Empresa",                    // Obligatorio - "Productor" o "Empresa"
+  "correo": "contacto@abc.com",         // Obligatorio
+  "nombre": "Pedro",                    // Obligatorio si NO envías idPersona
+  "apellido": "González",               // Obligatorio si NO envías idPersona
+  "cuit": "20987654321",                // Obligatorio si NO envías idPersona
+  "telefono": "1187654321",             // Obligatorio si NO envías idPersona
+  "idLocalidad": 1,                     // Obligatorio
+  "observaciones": "Cliente nuevo"      // Opcional
+}
+
+Response (201):
+{
+  "status": "success",
+  "data": {
+    "idCliente": 2,
+    "razonSocial": "Transporte ABC",
+    "tipo": "Empresa",
+    "correo": "contacto@abc.com",
+    "idPersona": 2,
+    "idLocalidad": 1,
+    "observaciones": "Cliente nuevo",
+    "persona": {
+      "idPersona": 2,
+      "nombre": "Pedro",
+      "apellido": "González",
+      "cuit": "20987654321",
+      "telefono": "1187654321"
+    },
+    "localidad": {...}
+  }
+}
+```
+
+✅ **La Persona se crea automáticamente**
+
+⚠️ **Importante:**
+- Debes enviar SOLO `idPersona` O los datos completos de persona, no ambos
+- Si creas Persona integrada, el CUIT no debe existir en BD
 
 ### ACTUALIZAR CLIENTE (PUT)
 ```http
@@ -424,12 +554,46 @@ Content-Type: application/json
   "razonSocial": "Transporte ABC",      // Opcional
   "tipo": "pyme",                       // Opcional
   "correo": "nuevo@abc.com",            // Opcional
-  "observaciones": "Cliente regular"    // Opcional
+  "idLocalidad": 5,                     // Opcional
+  "observaciones": "Cliente regular",   // Opcional
+  
+  // Datos de Persona (Opcional - editar nombre, apellido, teléfono, etc.)
+  "nombre": "Alberto Nuevo",            // Opcional
+  "apellido": "Rodríguez López",        // Opcional
+  "cuit": "30123456789",                // Opcional (debe ser único)
+  "telefono": "1188888888"              // Opcional
 }
 
 Response (200):
-{...cliente actualizado...}
+{
+  "status": "success",
+  "data": {
+    "idCliente": 1,
+    "razonSocial": "Transporte ABC",
+    "tipo": "pyme",
+    "correo": "nuevo@abc.com",
+    "idLocalidad": 5,
+    "observaciones": "Cliente regular",
+    "idPersona": 1,
+    "persona": {
+      "idPersona": 1,
+      "nombre": "Alberto Nuevo",
+      "apellido": "Rodríguez López",
+      "cuit": "30123456789",
+      "telefono": "1188888888"
+    },
+    "localidad": {
+      "idLocalidad": 5,
+      "nombre": "San Isidro"
+    }
+  }
+}
 ```
+
+⚠️ **Nota:** Puedes actualizar cualquier combinación de campos. Ejemplos:
+- Solo datos cliente: `{razonSocial: "Nuevo Nombre", correo: "mail@nuevo.com"}`
+- Solo datos de persona: `{nombre: "Alberto", telefono: "1188888888"}`
+- Mezcla completa: `{razonSocial: "ABC Transport", nombre: "Alberto", cuit: "30123456789"}`
 
 ### ELIMINAR CLIENTE (DELETE)
 ```http
@@ -486,7 +650,7 @@ Content-Type: multipart/form-data
   "tipoEntidad": "CHOFER",              // Obligatorio - CHOFER o VEHICULO
   "idChofer": 1,                        // Si tipoEntidad es CHOFER
   "detalle": "Sin detalles",            // Opcional
-  "renovacion": 365,                    // Opcional - Días
+  "renovacion": 365,                    // OBLIGATORIO - Días
   "file": <archivo>                     // Opcional - Para subir archivo
 }
 
