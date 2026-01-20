@@ -189,12 +189,12 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Viaje` (
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_Viaje_Chofer1`
     FOREIGN KEY (`idChofer`)
-    REFERENCES `mydb`.`ChoferXVehiculo` (`idChofer`)
+    REFERENCES `mydb`.`Chofer` (`idChofer`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-    CONSTRAINT `fk_Viaje_Vehiculo1`
+  CONSTRAINT `fk_Viaje_Vehiculo1`
     FOREIGN KEY (`idVehiculo`)
-    REFERENCES `mydb`.`ChoferXVehiculo` (`idVehiculo`)
+    REFERENCES `mydb`.`Vehiculo` (`idVehiculo`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
