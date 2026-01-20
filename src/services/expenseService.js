@@ -206,20 +206,46 @@ const crear = async (gasto) => {
 const modificarGasto = async (id, gasto) => {
   const { detalle, monto, tipo, idViaje } = gasto;
 
-  //verifico que el viaje ya esté registrado
-  const [existeViaje] = await db.query(
-    "SELECT * FROM Viaje WHERE idViaje = ?",
-    [idViaje]
-  );
-  if (existeViaje.length == 0) {
-    throw new Error("El idViaje ingresado no existe ");
+  // Obtener el gasto actual
+  const existente = await obtenerGastosPorId(id);
+  if (!existente) {
+    throw new Error("Gasto no encontrado");
   }
 
-  await db.query(
-    "UPDATE Gasto SET detalle = ?, monto = ?, tipo = ?, idViaje = ? WHERE idGasto = ?",
-    [detalle, monto, tipo, idViaje, id]
-  );
-  const viajes = await viajeService.obtenerViajes({ idViaje });
+  // Usar valores proporcionados o mantener los existentes
+  const campos = {};
+  if (detalle !== undefined) campos.detalle = detalle;
+  if (monto !== undefined) campos.monto = monto;
+  if (tipo !== undefined) campos.tipo = tipo;
+  if (idViaje !== undefined) {
+    // Verificar que el viaje existe si se proporciona
+    const [existeViaje] = await db.query(
+      "SELECT * FROM Viaje WHERE idViaje = ?",
+      [idViaje]
+    );
+    if (existeViaje.length === 0) {
+      throw new Error("El idViaje ingresado no existe");
+    }
+    campos.idViaje = idViaje;
+  }
+
+  // Si no hay campos a actualizar, simplemente devolver el gasto actual
+  if (Object.keys(campos).length === 0) {
+    return await obtenerGastosPorId(id);
+  }
+
+  // Construir la query dinámicamente
+  const setClauses = Object.keys(campos)
+    .map((key) => `${key} = ?`)
+    .join(", ");
+  const valores = Object.values(campos);
+  valores.push(id);
+
+  await db.query(`UPDATE Gasto SET ${setClauses} WHERE idGasto = ?`, valores);
+
+  const viajes = await viajeService.obtenerViajes({
+    idViaje: campos.idViaje || existente.idViaje,
+  });
   const viajeCompleto = viajes[0] || null;
 
   // Mapear solo los campos necesarios para evitar referencias circulares

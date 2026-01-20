@@ -57,4 +57,57 @@ const validarMantenimiento = [
     .withMessage("Las observaciones no pueden superar los 255 caracteres"),
 ];
 
-module.exports = validarMantenimiento;
+const validarMantenimientoActualizacion = [
+  // Todos los campos opcionales para actualización
+  body("fechaInicio")
+    .optional()
+    .isISO8601()
+    .withMessage("Ingrese una fechaInicio válida (YYYY-MM-DD)"),
+
+  body("fechaFin")
+    .optional()
+    .isISO8601()
+    .withMessage("Ingrese una fechaFin válida (YYYY-MM-DD)")
+    .custom((value, { req }) => {
+      if (
+        req.body.fechaInicio &&
+        new Date(value) < new Date(req.body.fechaInicio)
+      ) {
+        throw new Error("La fechaFin no puede ser anterior a la fechaInicio");
+      }
+      return true;
+    }),
+
+  body("tipo")
+    .optional()
+    .isString()
+    .withMessage("El tipo debe ser texto")
+    .isLength({ max: 45 })
+    .withMessage("El tipo no puede superar los 45 caracteres"),
+
+  body("idVehiculo")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("El idVehiculo debe ser un número entero positivo")
+    .custom(async (value) => {
+      if (value) {
+        const [rows] = await db.query(
+          "SELECT * FROM Vehiculo WHERE idVehiculo = ?",
+          [value]
+        );
+        if (rows.length === 0) {
+          throw new Error("El idVehiculo ingresado no existe");
+        }
+      }
+      return true;
+    }),
+
+  body("observaciones")
+    .optional({ values: "falsy" })
+    .isString()
+    .withMessage("Las observaciones deben ser texto")
+    .isLength({ max: 255 })
+    .withMessage("Las observaciones no pueden superar los 255 caracteres"),
+];
+
+module.exports = { validarMantenimiento, validarMantenimientoActualizacion };

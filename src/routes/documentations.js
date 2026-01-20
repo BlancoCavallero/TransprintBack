@@ -4,6 +4,7 @@ const documentationController = require("../controllers/documentationController"
 const upload = require("../middlewares/upload");
 const {
   validarDocumentacion,
+  validarDocumentacionActualizacion,
 } = require("../validators/documentationValidator");
 const validarResultado = require("../middlewares/validarResultado");
 
@@ -18,7 +19,7 @@ router.post(
 );
 router.put(
   "/:id",
-  validarDocumentacion,
+  validarDocumentacionActualizacion,
   validarResultado,
   upload.single("detalle"),
   documentationController.actualizar

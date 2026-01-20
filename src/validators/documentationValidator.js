@@ -79,4 +79,58 @@ const validarDocumentacion = [
   }),
 ];
 
-module.exports = { validarDocumentacion, DOCUMENTO_TIPO_ENTIDAD };
+const validarDocumentacionActualizacion = [
+  // Todos los campos opcionales para actualización
+  body("detalle")
+    .optional()
+    .isString()
+    .withMessage("El detalle debe ser texto")
+    .isLength({ max: 100 })
+    .withMessage("El detalle no puede superar los 100 caracteres"),
+
+  body("nombre")
+    .optional()
+    .isString()
+    .withMessage("El nombre debe estar en formato texto")
+    .isLength({ max: 45 })
+    .withMessage("El nombre no puede superar los 45 caracteres"),
+
+  body("tipoEntidad")
+    .optional()
+    .isIn(["CHOFER", "VEHICULO"])
+    .withMessage("El tipoEntidad debe ser CHOFER o VEHICULO"),
+
+  body("renovacion")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("La renovación debe ser un número entero positivo"),
+
+  body("fechaVencimiento")
+    .optional()
+    .isISO8601()
+    .withMessage("Ingrese una fecha válida (YYYY-MM-DD)"),
+
+  body("idVehiculo")
+    .optional()
+    .custom((value) => {
+      if (value && (!Number.isInteger(Number(value)) || Number(value) < 1)) {
+        throw new Error("El idVehiculo debe ser un número entero positivo");
+      }
+      return true;
+    }),
+
+  body("idChofer")
+    .optional()
+    .custom((value) => {
+      if (value && (!Number.isInteger(Number(value)) || Number(value) < 1)) {
+        throw new Error("El idChofer debe ser un número entero positivo");
+      }
+      return true;
+    }),
+];
+
+module.exports = {
+  validarDocumentacion,
+  validarDocumentacionActualizacion,
+  DOCUMENTO_TIPO_ENTIDAD,
+};

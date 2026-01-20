@@ -107,18 +107,38 @@ const actualizar = async (id, mantenimiento) => {
     throw new Error("No se proporcionaron datos de mantenimiento");
   }
 
+  // Obtener el mantenimiento actual
+  const existente = await obtenerMantenimientoPorId(id);
+  if (!existente) {
+    throw new Error("Mantenimiento no encontrado");
+  }
+
   const { fechaInicio, fechaFin, observaciones, tipo, idVehiculo } =
     mantenimiento;
 
-  if (!fechaInicio || !fechaFin || !tipo || !idVehiculo) {
-    throw new Error(
-      "Faltan campos obligatorios: fechaInicio, fechaFin, tipo, idVehiculo"
-    );
+  // Usar valores proporcionados o mantener los existentes
+  const campos = {};
+  if (fechaInicio !== undefined) campos.fechaInicio = fechaInicio;
+  if (fechaFin !== undefined) campos.fechaFin = fechaFin;
+  if (observaciones !== undefined) campos.observaciones = observaciones;
+  if (tipo !== undefined) campos.tipo = tipo;
+  if (idVehiculo !== undefined) campos.idVehiculo = idVehiculo;
+
+  // Si no hay campos a actualizar, simplemente devolver el mantenimiento actual
+  if (Object.keys(campos).length === 0) {
+    return await obtenerMantenimientoPorId(id);
   }
 
+  // Construir la query dinámicamente
+  const setClauses = Object.keys(campos)
+    .map((key) => `${key} = ?`)
+    .join(", ");
+  const valores = Object.values(campos);
+  valores.push(id);
+
   await db.query(
-    "UPDATE Mantenimiento SET fechaInicio = ?, fechaFin = ?, observaciones = ?, tipo = ?, idVehiculo = ? WHERE idMantenimiento = ?",
-    [fechaInicio, fechaFin, observaciones, tipo, idVehiculo, id]
+    `UPDATE Mantenimiento SET ${setClauses} WHERE idMantenimiento = ?`,
+    valores
   );
 
   return await obtenerMantenimientoPorId(id);

@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const mantenimientoController = require("../controllers/mantenimientoController");
-const validarMantenimiento = require("../validators/mantenimientoValidator");
+const {
+  validarMantenimiento,
+  validarMantenimientoActualizacion,
+} = require("../validators/mantenimientoValidator");
 const validarResultado = require("../middlewares/validarResultado");
 
 // CREATE: Crear un nuevo registro de mantenimiento
@@ -21,7 +24,7 @@ router.get("/:id", mantenimientoController.obtenerMantenimientoPorId);
 // UPDATE: Actualizar un registro de mantenimiento por ID
 router.put(
   "/:id",
-  validarMantenimiento,
+  validarMantenimientoActualizacion,
   validarResultado,
   mantenimientoController.actualizarMantenimiento
 );

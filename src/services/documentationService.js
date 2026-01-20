@@ -197,6 +197,17 @@ const crear = async (data) => {
     if (existeChofer.length === 0) {
       throw new Error("El idChofer ingresado no existe");
     }
+
+    // Verificar si ya existe este tipo de documento para este chofer
+    const [documentoDuplicado] = await db.query(
+      "SELECT * FROM Documentacion WHERE nombre = ? AND idChofer = ?",
+      [nombre, idChofer]
+    );
+    if (documentoDuplicado.length > 0) {
+      throw new Error(
+        `El chofer ya tiene un documento de tipo "${nombre}" cargado`
+      );
+    }
   }
 
   // Validar que existe el Vehículo si tipoEntidad es VEHICULO
@@ -207,6 +218,17 @@ const crear = async (data) => {
     );
     if (existeVehiculo.length === 0) {
       throw new Error("El idVehiculo ingresado no existe");
+    }
+
+    // Verificar si ya existe este tipo de documento para este vehículo
+    const [documentoDuplicado] = await db.query(
+      "SELECT * FROM Documentacion WHERE nombre = ? AND idVehiculo = ?",
+      [nombre, idVehiculo]
+    );
+    if (documentoDuplicado.length > 0) {
+      throw new Error(
+        `El vehículo ya tiene un documento de tipo "${nombre}" cargado`
+      );
     }
   }
 
@@ -253,61 +275,77 @@ const actualizar = async (id, data) => {
     throw new Error("Documentación no encontrada");
   }
 
-  // Determinar tipoEntidad (usar el proporcionado, o el existente, o calcular del nombre)
-  let tipoEntidadFinal = tipoEntidad || existente.tipoEntidad;
-  if (!tipoEntidadFinal) {
-    tipoEntidadFinal = determinarTipoEntidad(nombre, tipoEntidad);
-  }
-  if (!tipoEntidadFinal) {
-    throw new Error(
-      "No se pudo determinar el tipoEntidad. Proporciónelo explícitamente."
-    );
-  }
+  // Usar valores proporcionados o mantener los existentes
+  const detalleActual = detalle !== undefined ? detalle : existente.detalle;
+  const nombreActual = nombre !== undefined ? nombre : existente.nombre;
+  const renovacionActual =
+    renovacion !== undefined ? parseInt(renovacion, 10) : existente.renovacion;
+  const tipoEntidadActual = tipoEntidad || existente.tipoEntidad;
+  const fechaActual = fechaVencimiento
+    ? normalizarFecha(fechaVencimiento)
+    : existente.fechaVencimiento;
 
-  // Validar que existe el Chofer si tipoEntidad es CHOFER
-  if (tipoEntidadFinal === "CHOFER" && idChofer) {
+  // Para idChofer e idVehiculo, usar los proporcionados o mantener los existentes
+  const idChoferActual =
+    idChofer !== undefined
+      ? parseInt(idChofer, 10) || null
+      : existente.chofer?.idChofer || null;
+  const idVehiculoActual =
+    idVehiculo !== undefined
+      ? parseInt(idVehiculo, 10) || null
+      : existente.vehiculo?.idVehiculo || null;
+
+  // Validar que existe el Chofer si se proporciona
+  if (idChoferActual && tipoEntidadActual === "CHOFER") {
     const [existeChofer] = await db.query(
       "SELECT * FROM Chofer WHERE idChofer = ?",
-      [idChofer]
+      [idChoferActual]
     );
     if (existeChofer.length === 0) {
       throw new Error("El idChofer ingresado no existe");
     }
   }
 
-  // Validar que existe el Vehículo si tipoEntidad es VEHICULO
-  if (tipoEntidadFinal === "VEHICULO" && idVehiculo) {
+  // Validar que existe el Vehículo si se proporciona
+  if (idVehiculoActual && tipoEntidadActual === "VEHICULO") {
     const [existeVehiculo] = await db.query(
       "SELECT * FROM Vehiculo WHERE idVehiculo = ?",
-      [idVehiculo]
+      [idVehiculoActual]
     );
     if (existeVehiculo.length === 0) {
       throw new Error("El idVehiculo ingresado no existe");
     }
   }
 
-  const renovacionInt = parseInt(renovacion, 10) || existente.renovacion;
-  const idVehiculoInt =
-    tipoEntidadFinal === "VEHICULO" ? parseInt(idVehiculo, 10) || null : null;
-  const idChoferInt =
-    tipoEntidadFinal === "CHOFER" ? parseInt(idChofer, 10) || null : null;
-  const fechaNormalizada = fechaVencimiento
-    ? normalizarFecha(fechaVencimiento)
-    : existente.fechaVencimiento;
+  // Solo actualizar los campos que realmente cambiaron
+  const actualizaciones = {};
+  if (detalle !== undefined) actualizaciones.detalle = detalleActual;
+  if (nombre !== undefined) actualizaciones.nombre = nombreActual;
+  if (renovacion !== undefined) actualizaciones.renovacion = renovacionActual;
+  if (fechaVencimiento !== undefined)
+    actualizaciones.fechaVencimiento = fechaActual;
+  if (tipoEntidad !== undefined)
+    actualizaciones.tipoEntidad = tipoEntidadActual;
+  if (idChofer !== undefined) actualizaciones.idChofer = idChoferActual;
+  if (idVehiculo !== undefined) actualizaciones.idVehiculo = idVehiculoActual;
+
+  // Si no hay campos a actualizar, simplemente devolver el documento actual
+  if (Object.keys(actualizaciones).length === 0) {
+    return await obtenerPorId(id);
+  }
+
+  // Construir la query dinámicamente
+  const campos = Object.keys(actualizaciones)
+    .map((key) => `${key} = ?`)
+    .join(", ");
+  const valores = Object.values(actualizaciones);
+  valores.push(id);
 
   await db.query(
-    "UPDATE Documentacion SET detalle = ?, nombre = ?, renovacion = ?, fechaVencimiento = ?, tipoEntidad = ?, idVehiculo = ?, idChofer = ? WHERE idDocumentacion = ?",
-    [
-      detalle,
-      nombre,
-      renovacionInt,
-      fechaNormalizada,
-      tipoEntidadFinal,
-      idVehiculoInt,
-      idChoferInt,
-      id,
-    ]
+    `UPDATE Documentacion SET ${campos} WHERE idDocumentacion = ?`,
+    valores
   );
+
   return await obtenerPorId(id);
 };
 
