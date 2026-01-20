@@ -1,6 +1,9 @@
 const express = require("express");
 const driverController = require("../controllers/driverController");
-const validarChofer = require("../validators/driverValidator.js");
+const {
+  validarChofer,
+  validarChoferActualizacion,
+} = require("../validators/driverValidator.js");
 const validarResultado = require("../middlewares/validarResultado");
 const router = express.Router();
 
@@ -25,7 +28,7 @@ router.post(
 );
 router.put(
   "/:id",
-  validarChofer,
+  validarChoferActualizacion,
   validarResultado,
   driverController.modificarChofer
 );

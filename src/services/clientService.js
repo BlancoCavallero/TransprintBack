@@ -140,24 +140,62 @@ const obtenerPorCorreo = async (correo) => {
 };
 
 const crearCliente = async (cliente) => {
-  const { correo, observaciones, razonSocial, tipo, idPersona, idLocalidad } =
-    cliente;
-
-  //verifico que el idPersona no esté usado en otro cliente
-  const [existe] = await db.query("SELECT * FROM Cliente WHERE idPersona = ?", [
+  const {
+    correo,
+    observaciones,
+    razonSocial,
+    tipo,
     idPersona,
-  ]);
-  if (existe.length > 0) {
-    throw new Error("Ya existe un cliente registrado con ese idPersona");
-  }
+    idLocalidad,
+    nombre,
+    apellido,
+    cuit,
+    telefono,
+  } = cliente;
 
-  //verifico que la persona ya esté registrada
-  const [existePersona] = await db.query(
-    "SELECT * FROM Persona WHERE idPersona = ?",
-    [idPersona]
-  );
-  if (existePersona.length == 0) {
-    throw new Error("El idPersona ingresado no existe ");
+  let idPersonaFinal = idPersona;
+
+  // OPCIÓN 1: Si se envía idPersona, usar ese
+  if (idPersona) {
+    //verifico que el idPersona no esté usado en otro cliente
+    const [existe] = await db.query(
+      "SELECT * FROM Cliente WHERE idPersona = ?",
+      [idPersona]
+    );
+    if (existe.length > 0) {
+      throw new Error("Ya existe un cliente registrado con ese idPersona");
+    }
+
+    //verifico que la persona ya esté registrada
+    const [existePersona] = await db.query(
+      "SELECT * FROM Persona WHERE idPersona = ?",
+      [idPersona]
+    );
+    if (existePersona.length == 0) {
+      throw new Error("El idPersona ingresado no existe");
+    }
+  }
+  // OPCIÓN 2: Si se envían datos de persona, crearla
+  else if (nombre && apellido && cuit && telefono) {
+    // Verificar que la persona no exista por CUIT
+    const [personaExistente] = await db.query(
+      "SELECT * FROM Persona WHERE cuit = ?",
+      [cuit]
+    );
+    if (personaExistente.length > 0) {
+      throw new Error("Ya existe una persona con ese CUIT");
+    }
+
+    // Crear nueva persona
+    const [resultPersona] = await db.query(
+      "INSERT INTO Persona (nombre, apellido, cuit, telefono) VALUES (?, ?, ?, ?)",
+      [nombre, apellido, cuit, telefono]
+    );
+    idPersonaFinal = resultPersona.insertId;
+  } else {
+    throw new Error(
+      "Debe proporcionar idPersona o los datos completos de la persona (nombre, apellido, cuit, telefono)"
+    );
   }
 
   //verifico que la localidad ya esté registrada
@@ -166,7 +204,7 @@ const crearCliente = async (cliente) => {
     [idLocalidad]
   );
   if (existeLocalidad.length === 0) {
-    throw new Error("El idLocalidad ingresado no existe ");
+    throw new Error("El idLocalidad ingresado no existe");
   }
 
   const [result] = await db.query(
@@ -176,7 +214,7 @@ const crearCliente = async (cliente) => {
       observaciones || null,
       razonSocial,
       tipo,
-      idPersona,
+      idPersonaFinal,
       idLocalidad || null,
     ]
   );
@@ -186,8 +224,19 @@ const crearCliente = async (cliente) => {
 };
 
 const actualizarCliente = async (id, cliente) => {
-  const { correo, observaciones, razonSocial, tipo, idPersona, idLocalidad } =
-    cliente;
+  const {
+    correo,
+    observaciones,
+    razonSocial,
+    tipo,
+    idPersona,
+    idLocalidad,
+    nombre,
+    apellido,
+    cuit,
+    telefono,
+  } = cliente;
+
   //Verifico que el cliente exista
   const [clienteExistente] = await db.query(
     "SELECT * FROM Cliente WHERE idCliente = ?",
@@ -197,46 +246,75 @@ const actualizarCliente = async (id, cliente) => {
     throw new Error("El cliente no existe");
   }
 
-  /*//verifico que no se repita el dni
-  const [existeDni] = await db.query(
-    "SELECT * FROM Cliente WHERE dni = ?  AND idCliente != ?",
-    [dni, idCliente]
-  );
-  if (existeDni.length > 0) {
-    throw new Error("Ya existe un cliente registrado con ese DNI");
-  } */
+  // Obtener idPersona actual del cliente
+  const idPersonaActual = clienteExistente[0].idPersona;
 
-  //verifico que el idPersona no esté usado en otro cliente
-  const [existe] = await db.query(
-    "SELECT * FROM Cliente WHERE idPersona = ? AND idCliente != ?",
-    [idPersona, id] // <-- ignoramos el cliente actual
-  );
-  if (existe.length > 0) {
-    throw new Error("Ya existe un cliente registrado con ese idPersona");
+  // Actualizar datos del Cliente
+  const datosClienteActualizar = {};
+  if (correo !== undefined) datosClienteActualizar.correo = correo;
+  if (observaciones !== undefined)
+    datosClienteActualizar.observaciones = observaciones;
+  if (razonSocial !== undefined)
+    datosClienteActualizar.razonSocial = razonSocial;
+  if (tipo !== undefined) datosClienteActualizar.tipo = tipo;
+  if (idLocalidad !== undefined) {
+    // Verificar que la localidad exista
+    const [existeLocalidad] = await db.query(
+      "SELECT * FROM Localidad WHERE idLocalidad = ?",
+      [idLocalidad]
+    );
+    if (existeLocalidad.length === 0) {
+      throw new Error("El idLocalidad ingresado no existe");
+    }
+    datosClienteActualizar.idLocalidad = idLocalidad;
   }
 
-  //verifico que la persona ya esté registrada
-  const [existePersona] = await db.query(
-    "SELECT * FROM Persona WHERE idPersona = ?",
-    [idPersona]
-  );
-  if (existePersona.length === 0) {
-    throw new Error("El idPersona ingresado no existe ");
+  if (Object.keys(datosClienteActualizar).length > 0) {
+    const setClause = Object.keys(datosClienteActualizar)
+      .map((key) => `${key} = ?`)
+      .join(", ");
+    const values = Object.values(datosClienteActualizar);
+    values.push(id);
+
+    await db.query(
+      `UPDATE Cliente SET ${setClause} WHERE idCliente = ?`,
+      values
+    );
   }
 
-  //verifico que la localidad ya esté registrada
-  const [existeLocalidad] = await db.query(
-    "SELECT * FROM Localidad WHERE idLocalidad = ?",
-    [idLocalidad]
-  );
-  if (existeLocalidad.length === 0) {
-    throw new Error("El idLocalidad ingresado no existe ");
-  }
+  // Actualizar datos de la Persona si se proporcionan
+  if (nombre || apellido || cuit || telefono) {
+    // Validar CUIT si se proporciona y es diferente
+    if (cuit) {
+      const [existeCuit] = await db.query(
+        "SELECT * FROM Persona WHERE cuit = ? AND idPersona != ?",
+        [cuit, idPersonaActual]
+      );
+      if (existeCuit.length > 0) {
+        throw new Error("Ya existe una persona con ese CUIT");
+      }
+    }
 
-  await db.query(
-    "UPDATE Cliente SET correo = ?, observaciones = ?, razonSocial = ?, tipo = ?, idPersona = ?, idLocalidad = ? WHERE idCliente = ?",
-    [correo, observaciones, razonSocial, tipo, idPersona, idLocalidad, id]
-  );
+    // Actualizar Persona
+    const datosPersonaActualizar = {};
+    if (nombre !== undefined) datosPersonaActualizar.nombre = nombre;
+    if (apellido !== undefined) datosPersonaActualizar.apellido = apellido;
+    if (cuit !== undefined) datosPersonaActualizar.cuit = cuit;
+    if (telefono !== undefined) datosPersonaActualizar.telefono = telefono;
+
+    if (Object.keys(datosPersonaActualizar).length > 0) {
+      const setClause = Object.keys(datosPersonaActualizar)
+        .map((key) => `${key} = ?`)
+        .join(", ");
+      const values = Object.values(datosPersonaActualizar);
+      values.push(idPersonaActual);
+
+      await db.query(
+        `UPDATE Persona SET ${setClause} WHERE idPersona = ?`,
+        values
+      );
+    }
+  }
 
   // Return enriched client object
   return await obtenerPorId(id);
