@@ -32,6 +32,5 @@ router.put(
 router.delete("/:id", driverController.eliminarChofer);
 
 router.get("/:id/historial", driverController.consultarHistorial); // probar en postman
-router.post("/:id/asignar-camion", driverController.asignarVehiculo);
 
 module.exports = router;

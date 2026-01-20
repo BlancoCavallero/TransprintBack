@@ -437,52 +437,11 @@ const consultarDisponibilidad = async (estado) => {
   return resultado;
 };
 
-// --- Asignar vehiculo a chofer ---
-const asignarVehiculo = async (idChofer, idVehiculo) => {
-  const [[vehiculo]] = await db.query(
-    "SELECT estado FROM Vehiculo WHERE idVehiculo = ?",
-    [idVehiculo]
-  );
-  if (!vehiculo || vehiculo.estado !== "activo")
-    throw new Error("El vehículo no está disponible");
-
-  // Verificar que el chofer no esté ya ocupado
-  const [[chofer]] = await db.query(
-    "SELECT estadoDisponibilidad FROM Chofer WHERE idChofer = ?",
-    [idChofer]
-  );
-  if (!chofer) throw new Error("El chofer no existe");
-  if (chofer.estadoDisponibilidad !== "Libre")
-    throw new Error("El chofer no está disponible");
-
-  const fechaAsignacion = new Date();
-
-  // Registrar la asignación en ChoferXVehiculo (si no existe)
-  await db.query(
-    `INSERT INTO ChoferXVehiculo (idChofer, idVehiculo, fechaAsignacion)
-     VALUES (?, ?, ?)
-     ON DUPLICATE KEY UPDATE idChoferVehiculo = idChoferVehiculo;`,
-    [idChofer, idVehiculo, fechaAsignacion]
-  );
-
-  // Actualizar estado del vehículo y del chofer
-  await db.query(
-    "UPDATE Vehiculo SET estado = 'asignado' WHERE idVehiculo = ?",
-    [idVehiculo]
-  );
-  await db.query(
-    "UPDATE Chofer SET estadoDisponibilidad = 'Ocupado' WHERE idChofer = ?",
-    [idChofer]
-  );
-
-  // Obtener el idChoferVehiculo recién creado
-  const [[registro]] = await db.query(
-    "SELECT idChoferVehiculo FROM ChoferXVehiculo WHERE idChofer = ? AND idVehiculo = ?",
-    [idChofer, idVehiculo]
-  );
-
-  return { idChofer, idVehiculo, idChoferVehiculo: registro.idChoferVehiculo,fechaAsignacion: registro.fechaAsignacion, asignado: true };
-};
+// --- Asignar vehiculo a chofer (DEPRECADO - Ya no se usa) ---
+// Esta función ya no es necesaria ya que los viajes manejan la asignación temporal
+// const asignarVehiculo = async (idChofer, idVehiculo) => {
+//   // Lógica eliminada
+// };
 
 module.exports = {
   registrarChofer,
@@ -495,5 +454,4 @@ module.exports = {
   verificarDocumentacion,
   consultarHistorial,
   consultarDisponibilidad,
-  asignarVehiculo,
 };

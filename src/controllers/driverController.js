@@ -125,18 +125,7 @@ const consultarHistorial = async (req, res, next) => {
   }
 };
 
-// --- Asignar Vehículo ---
-const asignarVehiculo = async (req, res, next) => {
-  try {
-    const { idVehiculo } = req.body;
-    const idChofer = req.params.id;
-
-    const resultado = await driverService.asignarVehiculo(idChofer, idVehiculo);
-    successResponse(res, resultado, "Vehículo asignado correctamente");
-  } catch (error) {
-    next(error);
-  }
-};
+// --- Asignar Vehículo (DEPRECADO - Ya no se usa, la asignación se maneja en Viajes) ---
 
 module.exports = {
   registrarChofer,
@@ -146,5 +135,4 @@ module.exports = {
   obtenerChoferId,
   obtenerChoferesFiltradosController,
   consultarHistorial,
-  asignarVehiculo,
 };

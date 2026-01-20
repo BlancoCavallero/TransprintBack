@@ -1,6 +1,36 @@
 const db = require("../config/db");
 
 // ============================================================
+// Función para validar disponibilidad temporal de chofer y vehículo
+// ============================================================
+const validarDisponibilidadTemporal = async (idChofer, idVehiculo, fechaInicio, fechaFin, idViajeActual = null) => {
+  // Buscar viajes que se superponen en fechas (excluyendo el viaje actual si se está actualizando)
+  let query = `
+    SELECT idViaje FROM Viaje
+    WHERE (idChofer = ? OR idVehiculo = ?)
+    AND estado != 'CANCELADO'
+    AND NOT (fechaFin < ? OR fechaInicio > ?)
+  `;
+  const params = [idChofer, idVehiculo, fechaInicio, fechaFin];
+
+  // Si estamos actualizando un viaje, excluirlo de la validación
+  if (idViajeActual) {
+    query += " AND idViaje != ?";
+    params.push(idViajeActual);
+  }
+
+  const [conflictos] = await db.query(query, params);
+  
+  if (conflictos.length > 0) {
+    const error = new Error(
+      `El chofer o vehículo no está disponible en el rango de fechas seleccionado`
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+};
+
+// ============================================================
 // Función auxiliar para calcular estado automáticamente
 // ============================================================
 const calcularEstado = (fechaInicio, fechaFin, estadoActual) => {
@@ -169,20 +199,33 @@ const crear = async (viaje) => {
     idCliente,
     idLocalidadOrigen,
     idLocalidadDestino,
-    idChoferVehiculo,
+    idChofer,
+    idVehiculo,
   } = viaje;
 
-  // Obtener idChofer e idVehiculo a partir del idChoferVehiculo
-  const [cvRows] = await db.query(
-    "SELECT idChofer, idVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
-    [idChoferVehiculo]
+  // Validar que chofer y vehículo existan
+  const [choferCheck] = await db.query(
+    "SELECT idChofer FROM Chofer WHERE idChofer = ?",
+    [idChofer]
   );
-
-  if (cvRows.length === 0) {
-    throw new Error("La relación Chofer–Vehículo ingresada no existe");
+  if (choferCheck.length === 0) {
+    const error = new Error("El chofer ingresado no existe");
+    error.statusCode = 404;
+    throw error;
   }
 
-  const { idChofer, idVehiculo } = cvRows[0];
+  const [vehiculoCheck] = await db.query(
+    "SELECT idVehiculo FROM Vehiculo WHERE idVehiculo = ?",
+    [idVehiculo]
+  );
+  if (vehiculoCheck.length === 0) {
+    const error = new Error("El vehículo ingresado no existe");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Validar disponibilidad temporal
+  await validarDisponibilidadTemporal(idChofer, idVehiculo, fechaInicio, fechaFin);
 
   // Calcular estado al crear (siempre INICIADO)
   const estadoInicial = "INICIADO";
@@ -225,7 +268,8 @@ const actualizar = async (id, viaje) => {
     idLocalidadOrigen,
     idLocalidadDestino,
     estado,
-    idChoferVehiculo,
+    idChofer: newIdChofer,
+    idVehiculo: newIdVehiculo,
   } = viaje;
 
   // Obtener viaje actual para valores por defecto
@@ -240,26 +284,19 @@ const actualizar = async (id, viaje) => {
 
   const actual = viajeActual[0];
 
-  // Si se proporciona idChoferVehiculo, validar y obtener IDs
-  let idChofer = actual.idChofer;
-  let idVehiculo = actual.idVehiculo;
-
-  if (idChoferVehiculo) {
-    const [cvRows] = await db.query(
-      "SELECT idChofer, idVehiculo FROM ChoferXVehiculo WHERE idChoferVehiculo = ?",
-      [idChoferVehiculo]
-    );
-    if (cvRows.length === 0) {
-      throw new Error("La relación Chofer–Vehículo ingresada no existe");
-    }
-    idChofer = cvRows[0].idChofer;
-    idVehiculo = cvRows[0].idVehiculo;
-  }
+  // Usar nuevos IDs si se proporcionan, sino mantener los actuales
+  const idChofer = newIdChofer || actual.idChofer;
+  const idVehiculo = newIdVehiculo || actual.idVehiculo;
 
   // Usar valores actuales si no se proporcionan
   const nuevaFechaInicio = fechaInicio || actual.fechaInicio;
   const nuevaFechaFin = fechaFin || actual.fechaFin;
   const nuevoEstado = estado || actual.estado;
+
+  // Validar disponibilidad temporal si cambian chofer, vehículo o fechas
+  if (newIdChofer || newIdVehiculo || fechaInicio || fechaFin) {
+    await validarDisponibilidadTemporal(idChofer, idVehiculo, nuevaFechaInicio, nuevaFechaFin, id);
+  }
 
   // Actualizar en BD
   await db.query(
@@ -293,4 +330,4 @@ const eliminar = async (id) => {
   return { message: "Viaje eliminado correctamente" };
 };
 
-module.exports = { obtenerViajes, crear, actualizar, eliminar };
+module.exports = { obtenerViajes, crear, actualizar, eliminar, validarDisponibilidadTemporal };

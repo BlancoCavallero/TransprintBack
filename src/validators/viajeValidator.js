@@ -55,11 +55,17 @@ const crearViajeValidator = [
     .isInt()
     .withMessage("El idCliente debe ser numérico"),
 
-  body("idChoferVehiculo")
+  body("idChofer")
     .notEmpty()
-    .withMessage("La relación Chofer-Vehículo es obligatoria")
+    .withMessage("El chofer es obligatorio")
     .isInt()
-    .withMessage("El idChoferVehiculo debe ser numérico"),
+    .withMessage("El idChofer debe ser numérico"),
+
+  body("idVehiculo")
+    .notEmpty()
+    .withMessage("El vehículo es obligatorio")
+    .isInt()
+    .withMessage("El idVehiculo debe ser numérico"),
 
   body("idLocalidadOrigen")
     .notEmpty()
@@ -106,6 +112,16 @@ const actualizarViajeValidator = [
     .optional()
     .isFloat({ min: 0 })
     .withMessage("Los kilómetros deben ser válidos"),
+
+  body("idChofer")
+    .optional()
+    .isInt()
+    .withMessage("El idChofer debe ser numérico"),
+
+  body("idVehiculo")
+    .optional()
+    .isInt()
+    .withMessage("El idVehiculo debe ser numérico"),
 ];
 
 module.exports = {
