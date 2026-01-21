@@ -8,7 +8,7 @@ const ROLE_MAP = {
 };
 
 const registerAuthUser = async (req, res) => {
-  const { username, email, password, role } = req.body;
+  const { username, email, password, role, nombre_completo } = req.body;
 
   const errors = [];
 
@@ -58,14 +58,21 @@ const registerAuthUser = async (req, res) => {
     const accessToken = tokenResponse.data.access_token;
 
     // 2️⃣ Crear usuario en Auth0
+    const createUserData = {
+      email,
+      username,
+      password,
+      connection: "Username-Password-Authentication",
+    };
+
+    // Si se proporciona nombre_completo, agregarlo al payload
+    if (nombre_completo) {
+      createUserData.name = nombre_completo;
+    }
+
     const userResponse = await axios.post(
       `https://${process.env.AUTH0_DOMAIN}/api/v2/users`,
-      {
-        email,
-        username,
-        password,
-        connection: "Username-Password-Authentication",
-      },
+      createUserData,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
       },
@@ -88,8 +95,10 @@ const registerAuthUser = async (req, res) => {
     res.status(201).json({
       message: "Usuario creado y rol asignado correctamente",
       user: {
+        user_id: userId,
         username: userResponse.data.username,
         email: userResponse.data.email,
+        nombre_completo: userResponse.data.name || nombre_completo,
         role,
       },
     });
@@ -260,7 +269,7 @@ const obtenerUsuariosAuth0 = async (req, res) => {
 // Controlador para actualizar usuario en Auth0
 const actualizarUsuarioAuth0 = async (req, res) => {
   const { userId } = req.params;
-  const { username, email, password, role } = req.body;
+  const { username, email, password, role, nombre_completo } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: "userId es requerido" });
@@ -304,6 +313,7 @@ const actualizarUsuarioAuth0 = async (req, res) => {
     if (username) updateData.username = username;
     if (email) updateData.email = email;
     if (password) updateData.password = password;
+    if (nombre_completo) updateData.name = nombre_completo;
 
     if (Object.keys(updateData).length > 0) {
       await axios.patch(
@@ -355,8 +365,9 @@ const actualizarUsuarioAuth0 = async (req, res) => {
       message: "Usuario actualizado correctamente",
       data: {
         user_id: userId,
-        username,
-        email,
+        username: username || undefined,
+        email: email || undefined,
+        nombre_completo: nombre_completo || undefined,
         role: role || undefined,
       },
     });
