@@ -269,22 +269,27 @@ const obtenerUsuariosAuth0 = async (req, res) => {
 // Controlador para actualizar usuario en Auth0
 const actualizarUsuarioAuth0 = async (req, res) => {
   const { userId } = req.params;
-  const { username, email, password, role, nombre_completo } = req.body;
+  let { username, email, password, role, nombre_completo } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: "userId es requerido" });
   }
 
-  // Validaciones si se proporcionan
-  if (password) {
-    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!regex.test(password)) {
-      return res.status(400).json({
-        error:
-          "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número",
-      });
-    }
+  // Si password viene vacío o undefined, no lo incluir en la actualización
+  if (!password || password.trim() === "") {
+    password = null;
   }
+
+  // Validaciones si se proporcionan
+  // if (password) {
+  //   const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+  //   if (!regex.test(password)) {
+  //     return res.status(400).json({
+  //       error:
+  //         "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número",
+  //     });
+  //   }
+  // }
 
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: "Formato de email inválido" });
@@ -308,12 +313,13 @@ const actualizarUsuarioAuth0 = async (req, res) => {
 
     const accessToken = tokenResponse.data.access_token;
 
-    // 2️⃣ Actualizar datos del usuario
+    // 2️⃣ Actualizar datos del usuario (solo incluir campos proporcionados y no vacíos)
     const updateData = {};
-    if (username) updateData.username = username;
-    if (email) updateData.email = email;
-    if (password) updateData.password = password;
-    if (nombre_completo) updateData.name = nombre_completo;
+    if (username && username.trim() !== "") updateData.username = username;
+    if (email && email.trim() !== "") updateData.email = email;
+    if (password) updateData.password = password; // Solo si password es válido (no vacío)
+    if (nombre_completo && nombre_completo.trim() !== "")
+      updateData.name = nombre_completo;
 
     if (Object.keys(updateData).length > 0) {
       await axios.patch(
