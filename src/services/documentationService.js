@@ -224,14 +224,14 @@ const crear = async (data) => {
       throw new Error("El idChofer ingresado no existe");
     }
 
-    // Verificar si ya existe este tipo de documento para este chofer
+    // Verificar si ya existe este mismo documento para este chofer
     const [documentoDuplicado] = await db.query(
-      "SELECT * FROM Documentacion WHERE nombre = ? AND idChofer = ?",
-      [nombre, idChofer]
+      "SELECT * FROM Documentacion WHERE detalle = ? and fechaVencimiento = ? and idChofer = ?",
+      [detalle, fechaVencimiento, idChofer]
     );
-    if (documentoDuplicado.length > 0) {
+      if (documentoDuplicado.length > 0) {
       throw new Error(
-        `El chofer ya tiene un documento de tipo "${nombre}" cargado`
+        `El chofer ya tiene registrada esta documentación`
       );
     }
   }
