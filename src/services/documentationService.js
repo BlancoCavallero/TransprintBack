@@ -62,10 +62,22 @@ const obtenerTodas = async () => {
     LEFT JOIN Persona p ON c.idPersona = p.idPersona
   `);
 
-  const hoy = normalizarFecha(new Date());
+  const hoy = new Date();
   const mapped = rows.map((doc) => {
-    const vencimiento = normalizarFecha(doc.fechaVencimiento);
-    const estado = vencimiento < hoy ? "Vencida" : "Vigente";
+    const vencimiento = doc.fechaVencimiento;
+    const msegDia = 86400000;
+    let estado;
+    const calculoVencimiento = vencimiento - hoy;
+    const diasParaVencer = Math.ceil(calculoVencimiento / msegDia);
+    if (calculoVencimiento < 0) {
+      estado = "VENCIDA"
+    }  
+    else if (diasParaVencer <= 30) { 
+      estado = "POR_VENCER"
+    } 
+    else {
+      estado = "VIGENTE"
+    };
     return {
       idDocumentacion: doc.idDocumentacion,
       detalle: doc.detalle,
@@ -122,9 +134,23 @@ const obtenerPorId = async (id) => {
 
   const r = rows[0];
   if (!r) return null;
-  const hoy = normalizarFecha(new Date());
-  const vencimiento = normalizarFecha(r.fechaVencimiento);
-  const estado = vencimiento < hoy ? "Vencida" : "Vigente";
+  const hoy = new Date();
+  const vencimiento = r.fechaVencimiento;
+    const msegDia = 8.64e+7;
+    let estado;
+    const calculoVencimiento = vencimiento - hoy;
+    const diasParaVencer = Math.ceil(calculoVencimiento / msegDia);
+    if (calculoVencimiento < 0) {
+      estado = "VENCIDA"
+    }  
+    // funciona para que faltando 30 o menos días para vencer, el estado sea POR_VENCER 
+    else if (diasParaVencer <= 30) { 
+      estado = "POR_VENCER"
+    //se llama 3 veces la funcion, cuando se actualiza una documentacion
+    } 
+    else {
+      estado = "VIGENTE"
+    };
   return {
     idDocumentacion: r.idDocumentacion,
     detalle: r.detalle,

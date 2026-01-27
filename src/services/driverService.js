@@ -23,7 +23,7 @@ const verificarDocumentacion = async (idChofer) => {
     d.nombre.toLowerCase().includes("carnet")
   );
   const examenes = documentos.filter((d) =>
-    d.nombre.toLowerCase().includes("examen")
+    d.nombre.toLowerCase().includes("apto fisico")
   );
 
   const motivos = []; //no iria mas arriba en la linea 13?
@@ -493,7 +493,7 @@ const consultarDisponibilidad = async (estado) => {
     if (viajeStatus.activo) {
       estadoActualizado = "Ocupado";
     } else if (docStatus.cumpleRequisitos) {
-      estadoActualizado = "Libre";
+      estadoActualizado = "Habilitado";
     } else {
       estadoActualizado = "Inhabilitado";
     }
