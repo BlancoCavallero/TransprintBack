@@ -17,4 +17,7 @@ router.put("/:id", validarActualizacionVehiculo, validarResultado, vehiculoContr
 // Eliminar vehículo
 router.delete("/:id", vehiculoController.eliminarVehiculo);
 
+router.get("/con-mantenimientos", vehiculoController.obtenerVehiculosConMantenimientos);
+router.get("/:idVehiculo/mantenimientos",vehiculoController.obtenerMantenimientosDeVehiculo);
+
 module.exports = router;
