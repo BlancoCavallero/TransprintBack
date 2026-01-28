@@ -1,49 +1,72 @@
 const db = require("../config/db");
 
+const normalizarFecha = (fecha) => {
+  if (fecha instanceof Date) {
+    fecha.setHours(0, 0, 0, 0);
+    return fecha;
+  }
+
+  // Si viene como YYYY-MM-DD
+  if (typeof fecha === "string" && fecha.includes("-")) {
+    const f = new Date(fecha);
+    f.setHours(0, 0, 0, 0);
+    return f;
+  }
+
+  // Si viene como DD/MM/YYYY
+  if (typeof fecha === "string" && fecha.includes("/")) {
+    const [d, m, y] = fecha.split("/");
+    return new Date(y, m - 1, d);
+  }
+
+  return null;
+};
+
 // --- Función para verificar la documentación de un chofer ---
 const verificarDocumentacion = async (idChofer) => {
+
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
   // Consultar todos los documentos del chofer
   const [documentos] = await db.query(
-    "SELECT nombre, fechaVencimiento FROM Documentacion WHERE idChofer = ?",
+    `SELECT nombre, fechaVencimiento 
+    FROM Documentacion 
+    WHERE idChofer = ? 
+    ORDER BY fechaVencimiento DESC`,
     [idChofer]
   );
 
-  if (!documentos.length) {
-    return {
-      cumpleRequisitos: false,
-      motivos: ["No tiene documentación cargada"],
-    };
-  }
-
-  // Filtrar todos los carnets y exámenes
-  const carnets = documentos.filter((d) =>
+    // Último carnet
+  const ultimoCarnet = documentos.find(d =>
     d.nombre.toLowerCase().includes("carnet")
   );
-  const examenes = documentos.filter((d) =>
+  // Último apto físico
+  const ultimoApto = documentos.find(d =>
     d.nombre.toLowerCase().includes("apto fisico")
   );
 
-  const motivos = []; //no iria mas arriba en la linea 13?
-  if (carnets.length === 0) motivos.push("Falta carnet");
-  if (examenes.length === 0) motivos.push("Falta examen médico");
+  const motivos = [];
+  
+console.log("DOCUMENTOS:", documentos);
+console.log("ULTIMO CARNET:", ultimoCarnet);
+console.log("ULTIMO APTO:", ultimoApto);
+
+
+  if (!ultimoCarnet) motivos.push("Falta carnet");
+  if (!ultimoApto) motivos.push("Falta apto físico");
 
   if (motivos.length > 0) {
     return { cumpleRequisitos: false, motivos };
   }
 
-  // Ver si AL MENOS UNO de cada tipo está vigente
-  const carnetVigente = carnets.some(
-    (c) => new Date(c.fechaVencimiento) >= hoy
-  );
-  const examenVigente = examenes.some(
-    (e) => new Date(e.fechaVencimiento) >= hoy
-  );
 
-  if (!carnetVigente) motivos.push("Carnet vencido");
-  if (!examenVigente) motivos.push("Examen médico vencido");
+  //normalizo fechaVencimiento para comparar entre Date's
+  const vencCarnet = normalizarFecha(ultimoCarnet.fechaVencimiento);
+  const vencApto = normalizarFecha(ultimoApto.fechaVencimiento);
+
+  if (!vencCarnet || vencCarnet < hoy) motivos.push("Carnet vencido");
+  if (!vencApto || vencApto < hoy) motivos.push("Apto físico vencido");
 
   if (motivos.length > 0) {
     return { cumpleRequisitos: false, motivos };
@@ -75,8 +98,7 @@ const verificarViajeActivo = async (idChofer) => {
     (v) => v.estado && v.estado.toLowerCase() === "activo"
   );
 
-  //
-
+  
   return {
     activo: viajeActivo,
     motivos: viajeActivo ? ["El chofer está en viaje"] : [],
@@ -480,7 +502,8 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
 };
 
 // --- Consultar disponibilidad ---
-const consultarDisponibilidad = async (estado) => {
+const consultarDisponibilidad = async (estado) => { //aca no se le pasa un estado
+
   const choferes = await obtenerChoferesCompleto();
   const resultado = [];
 
@@ -491,11 +514,11 @@ const consultarDisponibilidad = async (estado) => {
     let estadoActualizado;
 
     if (viajeStatus.activo) {
-      estadoActualizado = "Ocupado";
+      estadoActualizado = "OCUPADO";
     } else if (docStatus.cumpleRequisitos) {
-      estadoActualizado = "Habilitado";
+      estadoActualizado = "HABILITADO";
     } else {
-      estadoActualizado = "Inhabilitado";
+      estadoActualizado = "INHABILITADO";
     }
 
     // Actualizar en base de datos
