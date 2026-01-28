@@ -153,8 +153,9 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Viaje` (
   `idViaje` INT NOT NULL AUTO_INCREMENT,
-  `estado` VARCHAR(45) NULL,
-  `fecha` DATE NULL,
+  `estado` ENUM('INICIADO','EN CURSO','FINALIZADO','CANCELADO') NOT NULL DEFAULT 'INICIADO',
+  `fechaInicio` DATE NOT NULL,
+  `fechaFin` DATE NOT NULL,
   `kilometros` FLOAT NULL,
   `observaciones` VARCHAR(45) NULL,
   `motivoCancelacion` VARCHAR(45) NULL,
@@ -188,12 +189,12 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Viaje` (
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_Viaje_Chofer1`
     FOREIGN KEY (`idChofer`)
-    REFERENCES `mydb`.`ChoferXVehiculo` (`idChofer`)
+    REFERENCES `mydb`.`Chofer` (`idChofer`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-    CONSTRAINT `fk_Viaje_Vehiculo1`
+  CONSTRAINT `fk_Viaje_Vehiculo1`
     FOREIGN KEY (`idVehiculo`)
-    REFERENCES `mydb`.`ChoferXVehiculo` (`idVehiculo`)
+    REFERENCES `mydb`.`Vehiculo` (`idVehiculo`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -229,6 +230,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Documentacion` (
   `nombre` VARCHAR(45) NULL,
   `renovacion` INT NULL,
   `fechaVencimiento` DATE NULL,
+  `tipoEntidad` ENUM('CHOFER','VEHICULO') NOT NULL,
   `idVehiculo` INT NULL,
   `idChofer` INT NULL,
   PRIMARY KEY (`idDocumentacion`),
@@ -271,17 +273,18 @@ ENGINE = InnoDB;
 -- Table `mydb`.`Mantenimiento`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Mantenimiento` (
-  `idMantenimiento` INT NOT NULL AUTO_INCREMENT, -- ¡Agregado AUTO_INCREMENT!
-  `fecha` DATE NULL,
-  `observaciones` VARCHAR(255) NULL, -- Más espacio para observaciones
+  `idMantenimiento` INT NOT NULL AUTO_INCREMENT,
+  `fechaInicio` DATE NOT NULL,
+  `fechaFin` DATE NOT NULL,
+  `observaciones` VARCHAR(255) NULL,
   `tipo` VARCHAR(45) NULL,
   `idVehiculo` INT NOT NULL,
-  PRIMARY KEY (`idMantenimiento`), -- Solo idMantenimiento como PK
+  PRIMARY KEY (`idMantenimiento`),
   INDEX `fk_Mantenimiento_Vehiculo1_idx` (`idVehiculo` ASC) VISIBLE,
   CONSTRAINT `fk_Mantenimiento_Vehiculo1`
     FOREIGN KEY (`idVehiculo`)
     REFERENCES `mydb`.`Vehiculo` (`idVehiculo`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 

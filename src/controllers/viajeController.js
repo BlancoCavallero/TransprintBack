@@ -15,8 +15,8 @@ const obtenerViajes = async (req, res, next) => {
 // ✅ POST
 const crearViaje = async (req, res, next) => {
   try {
-    await viajeService.crear(req.body);
-    successResponse(res, null, "Viaje creado exitosamente");
+    const created = await viajeService.crear(req.body);
+    successResponse(res, created, "Viaje creado exitosamente");
   } catch (error) {
     next(error);
   }
@@ -25,8 +25,8 @@ const crearViaje = async (req, res, next) => {
 // ✅ PUT
 const actualizarViaje = async (req, res, next) => {
   try {
-    await viajeService.actualizar(req.params.id, req.body);
-    successResponse(res, null, "Viaje actualizado correctamente");
+    const updated = await viajeService.actualizar(req.params.id, req.body);
+    successResponse(res, updated, "Viaje actualizado correctamente");
   } catch (error) {
     next(error);
   }

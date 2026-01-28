@@ -13,90 +13,115 @@ const esFechaFutura = (fechaStr) => {
 const esFechaPasadaOHoy = (fechaStr) => !esFechaFutura(fechaStr);
 
 const crearViajeValidator = [
+  body("fechaInicio")
+    .notEmpty()
+    .withMessage("La fechaInicio es obligatoria")
+    .isISO8601()
+    .withMessage("La fechaInicio debe tener formato válido (YYYY-MM-DD)"),
 
-  body("fecha")
-    .notEmpty().withMessage("La fecha es obligatoria")
-    .isISO8601().withMessage("La fecha debe tener formato válido (YYYY-MM-DD)"),
-
-  body("estado")
-    .notEmpty().withMessage("El estado es obligatorio")
-    .isIn(["Pendiente", "Activo", "Finalizado", "Cancelado"])
-    .withMessage("Estado inválido")
-    .custom((estado, { req }) => {
-      const fecha = req.body.fecha;
-      if (!fecha) return true;
-
-      // Estado pendiente SOLO si la fecha es futura
-      if (estado === "Pendiente" && esFechaPasadaOHoy(fecha)) {
-        throw new Error("Un viaje con fecha pasada o de hoy no puede estar 'Pendiente'.");
+  body("fechaFin")
+    .notEmpty()
+    .withMessage("La fechaFin es obligatoria")
+    .isISO8601()
+    .withMessage("La fechaFin debe tener formato válido (YYYY-MM-DD)")
+    .custom((value, { req }) => {
+      if (new Date(value) < new Date(req.body.fechaInicio)) {
+        throw new Error("La fechaFin no puede ser anterior a la fechaInicio");
       }
-
-      // Estado activo SOLO si la fecha es hoy o pasada
-      if (estado === "Activo" && esFechaFutura(fecha)) {
-        throw new Error("Un viaje con fecha futura no puede estar 'Activo'. Debe estar 'Pendiente'.");
-      }
-
       return true;
     }),
 
+  body("estado")
+    .optional()
+    .isIn(["INICIADO", "EN CURSO", "FINALIZADO", "CANCELADO"])
+    .withMessage(
+      "Estado inválido. Valores permitidos: INICIADO, EN CURSO, FINALIZADO, CANCELADO"
+    ),
+
   body("precio")
-    .notEmpty().withMessage("El precio es obligatorio")
-    .isFloat({ gt: 0 }).withMessage("El precio debe ser mayor a 0"),
+    .notEmpty()
+    .withMessage("El precio es obligatorio")
+    .isFloat({ gt: 0 })
+    .withMessage("El precio debe ser mayor a 0"),
 
   body("kilometros")
     .optional()
-    .isFloat({ min: 0 }).withMessage("Los kilómetros deben ser un número válido"),
+    .isFloat({ min: 0 })
+    .withMessage("Los kilómetros deben ser un número válido"),
 
   body("idCliente")
-    .notEmpty().withMessage("El cliente es obligatorio")
-    .isInt().withMessage("El idCliente debe ser numérico"),
+    .notEmpty()
+    .withMessage("El cliente es obligatorio")
+    .isInt()
+    .withMessage("El idCliente debe ser numérico"),
 
-  body("idChoferVehiculo")
-    .notEmpty().withMessage("El chofer/vehículo es obligatorio")
-    .isInt().withMessage("El idChoferVehiculo debe ser numérico"),
+  body("idChofer")
+    .notEmpty()
+    .withMessage("El chofer es obligatorio")
+    .isInt()
+    .withMessage("El idChofer debe ser numérico"),
+
+  body("idVehiculo")
+    .notEmpty()
+    .withMessage("El vehículo es obligatorio")
+    .isInt()
+    .withMessage("El idVehiculo debe ser numérico"),
 
   body("idLocalidadOrigen")
-    .notEmpty().withMessage("La localidad de origen es obligatoria")
-    .isInt().withMessage("idLocalidadOrigen debe ser numérico"),
+    .notEmpty()
+    .withMessage("La localidad de origen es obligatoria")
+    .isInt()
+    .withMessage("idLocalidadOrigen debe ser numérico"),
 
   body("idLocalidadDestino")
-    .notEmpty().withMessage("La localidad de destino es obligatoria")
-    .isInt().withMessage("idLocalidadDestino debe ser numérico"),
+    .notEmpty()
+    .withMessage("La localidad de destino es obligatoria")
+    .isInt()
+    .withMessage("idLocalidadDestino debe ser numérico"),
 ];
 
-
 const actualizarViajeValidator = [
-
-  body("fecha")
+  body("fechaInicio")
     .optional()
-    .isISO8601().withMessage("La fecha debe tener un formato válido"),
+    .isISO8601()
+    .withMessage("La fechaInicio debe tener un formato válido (YYYY-MM-DD)"),
 
-  body("estado")
+  body("fechaFin")
     .optional()
-    .isIn(["Pendiente", "Activo", "Finalizado", "Cancelado"])
-    .withMessage("Estado inválido")
-    .custom((estado, { req }) => {
-      const fecha = req.body.fecha || req.existingViajeFecha;
-      if (!fecha || !estado) return true;
-
-      if (estado === "Pendiente" && esFechaPasadaOHoy(fecha)) {
-        throw new Error("Un viaje con fecha pasada o de hoy no puede estar 'pendiente'.");
+    .isISO8601()
+    .withMessage("La fechaFin debe tener un formato válido (YYYY-MM-DD)")
+    .custom((value, { req }) => {
+      const fechaInicio = req.body.fechaInicio || req.existingViajeInicio;
+      if (value && fechaInicio && new Date(value) < new Date(fechaInicio)) {
+        throw new Error("La fechaFin no puede ser anterior a la fechaInicio");
       }
-
-      if (estado === "Activo" && esFechaFutura(fecha)) {
-        throw new Error("Un viaje con fecha futura no puede estar 'activo'.");
-      }
-
       return true;
     }),
 
+  body("estado")
+    .optional()
+    .isIn(["INICIADO", "EN CURSO", "FINALIZADO", "CANCELADO"])
+    .withMessage("Estado inválido"),
+
   body("precio")
     .optional()
-    .isFloat({ gt: 0 }).withMessage("El precio debe ser mayor a 0"),
+    .isFloat({ gt: 0 })
+    .withMessage("El precio debe ser mayor a 0"),
 
   body("kilometros")
     .optional()
-    .isFloat({ min: 0 }).withMessage("Los kilómetros deben ser válidos"),
+    .isFloat({ min: 0 })
+    .withMessage("Los kilómetros deben ser válidos"),
+
+  body("idChofer")
+    .optional()
+    .isInt()
+    .withMessage("El idChofer debe ser numérico"),
+
+  body("idVehiculo")
+    .optional()
+    .isInt()
+    .withMessage("El idVehiculo debe ser numérico"),
 ];
 
 module.exports = {

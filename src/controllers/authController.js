@@ -8,7 +8,7 @@ const ROLE_MAP = {
 };
 
 const registerAuthUser = async (req, res) => {
-  const { username, email, password, role } = req.body;
+  const { username, email, password, role, nombre_completo } = req.body;
 
   const errors = [];
 
@@ -29,12 +29,10 @@ const registerAuthUser = async (req, res) => {
   // Validar contraseña: 8+ caracteres, al menos una mayúscula, minúscula y número
   const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
   if (!regex.test(password)) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número",
-      });
+    return res.status(400).json({
+      error:
+        "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número",
+    });
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -54,23 +52,30 @@ const registerAuthUser = async (req, res) => {
         client_secret: process.env.AUTH0_CLIENT_SECRET,
         audience: `https://${process.env.AUTH0_DOMAIN}/api/v2/`,
         grant_type: "client_credentials",
-      }
+      },
     );
 
     const accessToken = tokenResponse.data.access_token;
 
     // 2️⃣ Crear usuario en Auth0
+    const createUserData = {
+      email,
+      username,
+      password,
+      connection: "Username-Password-Authentication",
+    };
+
+    // Si se proporciona nombre_completo, agregarlo al payload
+    if (nombre_completo) {
+      createUserData.name = nombre_completo;
+    }
+
     const userResponse = await axios.post(
       `https://${process.env.AUTH0_DOMAIN}/api/v2/users`,
-      {
-        email,
-        username,
-        password,
-        connection: "Username-Password-Authentication",
-      },
+      createUserData,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
-      }
+      },
     );
 
     const userId = userResponse.data.user_id;
@@ -83,15 +88,17 @@ const registerAuthUser = async (req, res) => {
       },
       {
         headers: { Authorization: `Bearer ${accessToken}` },
-      }
+      },
     );
 
     // 4️⃣ Responder al frontend
     res.status(201).json({
       message: "Usuario creado y rol asignado correctamente",
       user: {
+        user_id: userId,
         username: userResponse.data.username,
         email: userResponse.data.email,
+        nombre_completo: userResponse.data.name || nombre_completo,
         role,
       },
     });
@@ -138,7 +145,7 @@ const loginAuthUser = async (req, res) => {
       },
       {
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
 
     // Devuelve el token tal cual lo proporciona Auth0 al frontend
@@ -155,4 +162,297 @@ const loginAuthUser = async (req, res) => {
   }
 };
 
-module.exports = { registerAuthUser, loginAuthUser };
+// Controlador para obtener todos los usuarios de Auth0 con roles
+const obtenerUsuariosAuth0 = async (req, res) => {
+  try {
+    // 1️⃣ Obtener token de Auth0 (client credentials)
+    const tokenResponse = await axios.post(
+      `https://${process.env.AUTH0_DOMAIN}/oauth/token`,
+      {
+        client_id: process.env.AUTH0_CLIENT_ID,
+        client_secret: process.env.AUTH0_CLIENT_SECRET,
+        audience: `https://${process.env.AUTH0_DOMAIN}/api/v2/`,
+        grant_type: "client_credentials",
+      },
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // 2️⃣ Obtener usuarios de Auth0
+    const usersResponse = await axios.get(
+      `https://${process.env.AUTH0_DOMAIN}/api/v2/users`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: {
+          per_page: 100,
+          page: req.query.page || 0,
+          include_totals: true,
+        },
+      },
+    );
+
+    // 3️⃣ Para cada usuario, obtener sus roles
+    const usuariosMapeados = await Promise.all(
+      usersResponse.data.users.map(async (user) => {
+        try {
+          const rolesResponse = await axios.get(
+            `https://${process.env.AUTH0_DOMAIN}/api/v2/users/${user.user_id}/roles`,
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            },
+          );
+
+          // Mapear los IDs de roles a nombres
+          const roleNames = rolesResponse.data
+            .map((r) => {
+              if (r.id === process.env.ROLE_ID_EMPLEADO) return "Empleado";
+              if (r.id === process.env.ROLE_ID_ADMIN) return "Administrador";
+              return r.name;
+            })
+            .filter(Boolean);
+
+          return {
+            user_id: user.user_id,
+            username: user.username,
+            email: user.email,
+            nombre_completo: user.name || user.email,
+            roles: roleNames.length > 0 ? roleNames : ["Sin rol"],
+            creado_en: user.created_at,
+            ultimo_login: user.last_login,
+            bloqueado: user.blocked || false,
+          };
+        } catch (error) {
+          console.error(
+            `Error obteniendo roles para ${user.user_id}:`,
+            error.message,
+          );
+          return {
+            user_id: user.user_id,
+            username: user.username,
+            email: user.email,
+            nombre_completo: user.name || user.email,
+            roles: ["Error al cargar"],
+            creado_en: user.created_at,
+            ultimo_login: user.last_login,
+            bloqueado: user.blocked || false,
+          };
+        }
+      }),
+    );
+
+    res.status(200).json({
+      success: true,
+      data: usuariosMapeados,
+      total: usersResponse.data.total,
+      limit: usersResponse.data.limit,
+      start: usersResponse.data.start,
+      message: `Se obtuvieron ${usuariosMapeados.length} usuarios`,
+    });
+  } catch (error) {
+    console.error("Error al obtener usuarios de Auth0:", error.message);
+    let message = "Error al obtener usuarios";
+
+    if (error.response && error.response.data) {
+      const errData = error.response.data;
+      if (errData.statusCode === 401) message = "Token inválido o expirado";
+      else if (errData.statusCode === 403)
+        message = "No tienes permisos para acceder";
+    }
+
+    res.status(error.response?.status || 500).json({
+      success: false,
+      error: message,
+    });
+  }
+};
+
+// Controlador para actualizar usuario en Auth0
+const actualizarUsuarioAuth0 = async (req, res) => {
+  const { userId } = req.params;
+  let { username, email, password, role, nombre_completo } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: "userId es requerido" });
+  }
+
+  // Si password viene vacío o undefined, no lo incluir en la actualización
+  if (!password || password.trim() === "") {
+    password = null;
+  }
+
+  // Validaciones si se proporcionan
+  // if (password) {
+  //   const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+  //   if (!regex.test(password)) {
+  //     return res.status(400).json({
+  //       error:
+  //         "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número",
+  //     });
+  //   }
+  // }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: "Formato de email inválido" });
+  }
+
+  if (role && !ROLE_MAP[role]) {
+    return res.status(400).json({ error: "El rol ingresado no es válido" });
+  }
+
+  try {
+    // 1️⃣ Obtener token de Auth0
+    const tokenResponse = await axios.post(
+      `https://${process.env.AUTH0_DOMAIN}/oauth/token`,
+      {
+        client_id: process.env.AUTH0_CLIENT_ID,
+        client_secret: process.env.AUTH0_CLIENT_SECRET,
+        audience: `https://${process.env.AUTH0_DOMAIN}/api/v2/`,
+        grant_type: "client_credentials",
+      },
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // 2️⃣ Actualizar datos del usuario (solo incluir campos proporcionados y no vacíos)
+    const updateData = {};
+    if (username && username.trim() !== "") updateData.username = username;
+    if (email && email.trim() !== "") updateData.email = email;
+    if (password) updateData.password = password; // Solo si password es válido (no vacío)
+    if (nombre_completo && nombre_completo.trim() !== "")
+      updateData.name = nombre_completo;
+
+    if (Object.keys(updateData).length > 0) {
+      await axios.patch(
+        `https://${process.env.AUTH0_DOMAIN}/api/v2/users/${userId}`,
+        updateData,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+    }
+
+    // 3️⃣ Actualizar rol si se proporcionó
+    if (role) {
+      // Obtener roles actuales
+      const rolesResponse = await axios.get(
+        `https://${process.env.AUTH0_DOMAIN}/api/v2/users/${userId}/roles`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+
+      // Remover todos los roles actuales
+      if (rolesResponse.data.length > 0) {
+        await axios.delete(
+          `https://${process.env.AUTH0_DOMAIN}/api/v2/users/${userId}/roles`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            data: {
+              roles: rolesResponse.data.map((r) => r.id),
+            },
+          },
+        );
+      }
+
+      // Asignar nuevo rol
+      await axios.post(
+        `https://${process.env.AUTH0_DOMAIN}/api/v2/users/${userId}/roles`,
+        {
+          roles: [ROLE_MAP[role]],
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Usuario actualizado correctamente",
+      data: {
+        user_id: userId,
+        username: username || undefined,
+        email: email || undefined,
+        nombre_completo: nombre_completo || undefined,
+        role: role || undefined,
+      },
+    });
+  } catch (error) {
+    console.error("Error al actualizar usuario:", error.message);
+    let message = "Error al actualizar usuario";
+
+    if (error.response && error.response.data) {
+      const errData = error.response.data;
+      if (errData.statusCode === 404) message = "Usuario no encontrado";
+      else if (errData.statusCode === 409) message = "El usuario ya existe";
+      else if (errData.statusCode === 401) message = "No autorizado";
+    }
+
+    res.status(error.response?.status || 500).json({
+      success: false,
+      error: message,
+    });
+  }
+};
+
+// Controlador para eliminar usuario de Auth0
+const eliminarUsuarioAuth0 = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ error: "userId es requerido" });
+  }
+
+  try {
+    // 1️⃣ Obtener token de Auth0
+    const tokenResponse = await axios.post(
+      `https://${process.env.AUTH0_DOMAIN}/oauth/token`,
+      {
+        client_id: process.env.AUTH0_CLIENT_ID,
+        client_secret: process.env.AUTH0_CLIENT_SECRET,
+        audience: `https://${process.env.AUTH0_DOMAIN}/api/v2/`,
+        grant_type: "client_credentials",
+      },
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // 2️⃣ Eliminar usuario
+    await axios.delete(
+      `https://${process.env.AUTH0_DOMAIN}/api/v2/users/${userId}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Usuario eliminado correctamente",
+      data: {
+        user_id: userId,
+      },
+    });
+  } catch (error) {
+    console.error("Error al eliminar usuario:", error.message);
+    let message = "Error al eliminar usuario";
+
+    if (error.response && error.response.data) {
+      const errData = error.response.data;
+      if (errData.statusCode === 404) message = "Usuario no encontrado";
+      else if (errData.statusCode === 401) message = "No autorizado";
+    }
+
+    res.status(error.response?.status || 500).json({
+      success: false,
+      error: message,
+    });
+  }
+};
+
+module.exports = {
+  registerAuthUser,
+  loginAuthUser,
+  obtenerUsuariosAuth0,
+  actualizarUsuarioAuth0,
+  eliminarUsuarioAuth0,
+};

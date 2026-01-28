@@ -2,97 +2,146 @@ const db = require("../config/db");
 
 const obtenerMantenimientos = async (filtros = {}) => {
   const { idVehiculo, tipo, fechaDesde, fechaHasta } = filtros;
-  
+
   let query = `
-    SELECT m.*, v.patente 
+    SELECT m.*, v.idVehiculo AS vehiculoId, v.patente AS vehiculoPatente, v.marca AS vehiculoMarca, v.modelo AS vehiculoModelo, v.tipo AS vehiculoTipo
     FROM Mantenimiento m
-    JOIN Vehiculo v ON m.idVehiculo = v.idVehiculo
+    LEFT JOIN Vehiculo v ON m.idVehiculo = v.idVehiculo
   `;
   let conditions = [];
   let values = [];
-  
+
   if (idVehiculo) {
-    conditions.push('m.idVehiculo = ?');
+    conditions.push("m.idVehiculo = ?");
     values.push(idVehiculo);
   }
-  
+
   if (tipo) {
-    conditions.push('m.tipo = ?');
+    conditions.push("m.tipo = ?");
     values.push(tipo);
   }
-  
+
   if (fechaDesde) {
-    conditions.push('m.fecha >= ?');
+    conditions.push("m.fechaInicio >= ?");
     values.push(fechaDesde);
   }
-  
+
   if (fechaHasta) {
-    conditions.push('m.fecha <= ?');
+    conditions.push("m.fechaFin <= ?");
     values.push(fechaHasta);
   }
 
   if (conditions.length > 0) {
-    query += ' WHERE ' + conditions.join(' AND ');
+    query += " WHERE " + conditions.join(" AND ");
   }
 
-  query += ' ORDER BY m.fecha DESC';
+  query += " ORDER BY m.fechaInicio DESC";
 
   const [rows] = await db.query(query, values);
-  
-  // FORMATEAR FECHAS para que no salgan con hora y zona horaria
-  return rows.map(mantenimiento => ({
-    ...mantenimiento,
-    fecha: formatFecha(mantenimiento.fecha)
+
+  return rows.map((mantenimiento) => ({
+    idMantenimiento: mantenimiento.idMantenimiento,
+    fechaInicio: formatFecha(mantenimiento.fechaInicio),
+    fechaFin: formatFecha(mantenimiento.fechaFin),
+    observaciones: mantenimiento.observaciones,
+    tipo: mantenimiento.tipo,
+    vehiculo: mantenimiento.vehiculoId
+      ? {
+          idVehiculo: mantenimiento.vehiculoId,
+          patente: mantenimiento.vehiculoPatente,
+          marca: mantenimiento.vehiculoMarca,
+          modelo: mantenimiento.vehiculoModelo,
+          tipo: mantenimiento.vehiculoTipo,
+        }
+      : null,
   }));
 };
 
 const obtenerMantenimientoPorId = async (id) => {
-  const [rows] = await db.query(`
-    SELECT m.*, v.patente 
+  const [rows] = await db.query(
+    `
+    SELECT m.*, v.idVehiculo AS vehiculoId, v.patente AS vehiculoPatente, v.marca AS vehiculoMarca, v.modelo AS vehiculoModelo, v.tipo AS vehiculoTipo
     FROM Mantenimiento m
-    JOIN Vehiculo v ON m.idVehiculo = v.idVehiculo
+    LEFT JOIN Vehiculo v ON m.idVehiculo = v.idVehiculo
     WHERE m.idMantenimiento = ?
-  `, [id]);
-  
+  `,
+    [id]
+  );
+
   if (rows[0]) {
+    const r = rows[0];
     return {
-      ...rows[0],
-      fecha: formatFecha(rows[0].fecha) // ✅ Formatear fecha
+      idMantenimiento: r.idMantenimiento,
+      fechaInicio: formatFecha(r.fechaInicio),
+      fechaFin: formatFecha(r.fechaFin),
+      observaciones: r.observaciones,
+      tipo: r.tipo,
+      vehiculo: r.vehiculoId
+        ? {
+            idVehiculo: r.vehiculoId,
+            patente: r.vehiculoPatente,
+            marca: r.vehiculoMarca,
+            modelo: r.vehiculoModelo,
+            tipo: r.vehiculoTipo,
+          }
+        : null,
     };
   }
   return null;
 };
 
 const crear = async (mantenimiento) => {
-  const { fecha, observaciones, tipo, idVehiculo } = mantenimiento;
-  
+  const { fechaInicio, fechaFin, observaciones, tipo, idVehiculo } =
+    mantenimiento;
+
   const [result] = await db.query(
-    "INSERT INTO Mantenimiento (fecha, observaciones, tipo, idVehiculo) VALUES (?, ?, ?, ?)",
-    [fecha, observaciones, tipo, idVehiculo]
+    "INSERT INTO Mantenimiento (fechaInicio, fechaFin, observaciones, tipo, idVehiculo) VALUES (?, ?, ?, ?, ?)",
+    [fechaInicio, fechaFin, observaciones, tipo, idVehiculo]
   );
-  
-  return { idMantenimiento: result.insertId, ...mantenimiento };
+
+  return await obtenerMantenimientoPorId(result.insertId);
 };
 
 const actualizar = async (id, mantenimiento) => {
-  // VALIDAR que mantenimiento existe
   if (!mantenimiento) {
     throw new Error("No se proporcionaron datos de mantenimiento");
   }
 
-  const { fecha, observaciones, tipo, idVehiculo } = mantenimiento;
-  
-  // VALIDAR campos obligatorios
-  if (!fecha || !tipo || !idVehiculo) {
-    throw new Error("Faltan campos obligatorios: fecha, tipo, idVehiculo");
+  // Obtener el mantenimiento actual
+  const existente = await obtenerMantenimientoPorId(id);
+  if (!existente) {
+    throw new Error("Mantenimiento no encontrado");
   }
 
+  const { fechaInicio, fechaFin, observaciones, tipo, idVehiculo } =
+    mantenimiento;
+
+  // Usar valores proporcionados o mantener los existentes
+  const campos = {};
+  if (fechaInicio !== undefined) campos.fechaInicio = fechaInicio;
+  if (fechaFin !== undefined) campos.fechaFin = fechaFin;
+  if (observaciones !== undefined) campos.observaciones = observaciones;
+  if (tipo !== undefined) campos.tipo = tipo;
+  if (idVehiculo !== undefined) campos.idVehiculo = idVehiculo;
+
+  // Si no hay campos a actualizar, simplemente devolver el mantenimiento actual
+  if (Object.keys(campos).length === 0) {
+    return await obtenerMantenimientoPorId(id);
+  }
+
+  // Construir la query dinámicamente
+  const setClauses = Object.keys(campos)
+    .map((key) => `${key} = ?`)
+    .join(", ");
+  const valores = Object.values(campos);
+  valores.push(id);
+
   await db.query(
-    "UPDATE Mantenimiento SET fecha = ?, observaciones = ?, tipo = ?, idVehiculo = ? WHERE idMantenimiento = ?",
-    [fecha, observaciones, tipo, idVehiculo, id]
+    `UPDATE Mantenimiento SET ${setClauses} WHERE idMantenimiento = ?`,
+    valores
   );
-  
-  return { idMantenimiento: id, ...mantenimiento };
+
+  return await obtenerMantenimientoPorId(id);
 };
 
 const eliminarMantenimiento = async (id) => {
@@ -100,21 +149,19 @@ const eliminarMantenimiento = async (id) => {
   return { message: "Mantenimiento eliminado correctamente" };
 };
 
-// FUNCIÓN PARA FORMATEAR FECHA
+// Función para formatear fecha a YYYY-MM-DD
 const formatFecha = (fecha) => {
   if (!fecha) return null;
-  
-  // Si ya es string en formato YYYY-MM-DD, devolverlo tal cual
-  if (typeof fecha === 'string' && fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+
+  if (typeof fecha === "string" && fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
     return fecha;
   }
-  
-  // Si es objeto Date o string con hora, formatear a YYYY-MM-DD
+
   const dateObj = new Date(fecha);
   const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getDate()).padStart(2, '0');
-  
+  const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const day = String(dateObj.getDate()).padStart(2, "0");
+
   return `${year}-${month}-${day}`;
 };
 

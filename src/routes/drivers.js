@@ -1,6 +1,9 @@
 const express = require("express");
 const driverController = require("../controllers/driverController");
-const validarChofer = require("../validators/driverValidator.js");
+const {
+  validarChofer,
+  validarChoferActualizacion,
+} = require("../validators/driverValidator.js");
 const validarResultado = require("../middlewares/validarResultado");
 const router = express.Router();
 
@@ -12,14 +15,25 @@ router.get("/nombre/:nombre", driverController.obtenerChoferNombre);
 router.get("/estado/:estado", driverController.obtenerChoferEstado);
 router.get("/dni/:dni", driverController.obtenerChoferDni);
 */
-router.get("/buscar/:valor", driverController.obtenerChoferesFiltradosController);
-router.get("/estado/:estado", driverController.consultarChoferesDisponibilidad);
+router.get(
+  "/buscar/:valor",
+  driverController.obtenerChoferesFiltradosController
+);
 
-router.post("/", validarChofer, validarResultado, driverController.registrarChofer);
-router.put("/:id", validarChofer, validarResultado, driverController.modificarChofer);
+router.post(
+  "/",
+  validarChofer,
+  validarResultado,
+  driverController.registrarChofer
+);
+router.put(
+  "/:id",
+  validarChoferActualizacion,
+  validarResultado,
+  driverController.modificarChofer
+);
 router.delete("/:id", driverController.eliminarChofer);
 
-router.get("/:id/historial", driverController.consultarHistorial);// probar en postman
-router.post("/:id/asignar-camion", driverController.asignarVehiculo);
+router.get("/:id/historial", driverController.consultarHistorial); // probar en postman
 
 module.exports = router;

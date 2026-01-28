@@ -37,13 +37,18 @@ const crear = async (vehiculo) => {
   const { anio, estado, marca, modelo, patente, tipo } = vehiculo;
 
   if (!patente || !marca || !modelo || !estado) {
-    const error = new Error("Faltan campos obligatorios (patente, marca, modelo, estado)");
+    const error = new Error(
+      "Faltan campos obligatorios (patente, marca, modelo, estado)"
+    );
     error.statusCode = 400;
     throw error;
   }
 
   // Verificar duplicado por patente (si no lo hiciste en el validator)
-  const [existe] = await db.query("SELECT idVehiculo FROM Vehiculo WHERE patente = ?", [patente]);
+  const [existe] = await db.query(
+    "SELECT idVehiculo FROM Vehiculo WHERE patente = ?",
+    [patente]
+  );
   if (existe.length > 0) {
     const error = new Error("Ya existe un vehículo con esa patente");
     error.statusCode = 400;
@@ -59,7 +64,10 @@ const crear = async (vehiculo) => {
 
 const actualizar = async (id, vehiculo) => {
   // Verificar existencia
-  const [check] = await db.query("SELECT * FROM Vehiculo WHERE idVehiculo = ?", [id]);
+  const [check] = await db.query(
+    "SELECT * FROM Vehiculo WHERE idVehiculo = ?",
+    [id]
+  );
   if (check.length === 0) {
     const error = new Error("Vehículo no encontrado");
     error.statusCode = 404;
@@ -69,7 +77,15 @@ const actualizar = async (id, vehiculo) => {
   const { anio, estado, marca, modelo, patente, tipo } = vehiculo;
   const [result] = await db.query(
     "UPDATE Vehiculo SET anio = ?, estado = ?, marca = ?, modelo = ?, patente = ?, tipo = ? WHERE idVehiculo = ?",
-    [anio, estado ? estado.toLowerCase() : check[0].estado, marca || check[0].marca, modelo || check[0].modelo, patente || check[0].patente, tipo || check[0].tipo, id]
+    [
+      anio !== undefined ? anio : check[0].anio,
+      estado ? estado.toLowerCase() : check[0].estado,
+      marca || check[0].marca,
+      modelo || check[0].modelo,
+      patente || check[0].patente,
+      tipo || check[0].tipo,
+      id,
+    ]
   );
 
   if (result.affectedRows === 0) {
@@ -82,7 +98,9 @@ const actualizar = async (id, vehiculo) => {
 };
 
 const eliminarVehiculo = async (id) => {
-  const [result] = await db.query("DELETE FROM Vehiculo WHERE idVehiculo = ?", [id]);
+  const [result] = await db.query("DELETE FROM Vehiculo WHERE idVehiculo = ?", [
+    id,
+  ]);
 
   if (result.affectedRows === 0) {
     const error = new Error("Vehículo no encontrado");
