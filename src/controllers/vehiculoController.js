@@ -4,9 +4,16 @@ const { successResponse, errorResponse } = require("../utils/response");
 
 const obtenerVehiculos = async (req, res, next) => {
   try {
-    const filtros = req.query;
+    const { estado } = req.query;
+        
+        const vehiculos = estado
+          ? await vehiculoService.consultarDisponibilidad(estado)
+          : await vehiculoService.consultarDisponibilidad();
+    
+        successResponse(res, vehiculos);
+    /*const filtros = req.query;
     const vehiculos = await vehiculoService.obtenerVehiculos(filtros);
-    successResponse(res, vehiculos);
+    successResponse(res, vehiculos);*/
   } catch (error) {
     next(error);
   }

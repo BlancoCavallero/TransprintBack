@@ -1,5 +1,28 @@
 const db = require("../config/db");
 
+
+const normalizarFecha = (fecha) => {
+  if (fecha instanceof Date) {
+    fecha.setHours(0, 0, 0, 0);
+    return fecha;
+  }
+
+  // Si viene como YYYY-MM-DD
+  if (typeof fecha === "string" && fecha.includes("-")) {
+    const f = new Date(fecha);
+    f.setHours(0, 0, 0, 0);
+    return f;
+  }
+
+  // Si viene como DD/MM/YYYY
+  if (typeof fecha === "string" && fecha.includes("/")) {
+    const [d, m, y] = fecha.split("/");
+    return new Date(y, m - 1, d);
+  }
+
+  return null;
+};
+
 // --- Función para verificar la documentación de un Vehiculo ---
 const verificarDocumentacion = async (idVehiculo) => {
 
@@ -56,8 +79,44 @@ console.log("ULTIMO Seguro:", ultimoSeguro);
   };
 };
 
+const verificarViajeActivo = async (idVehiculo) => {
+  const [viajes] = await db.query(
+    `
+  SELECT idViaje, estado
+  FROM Viaje
+  WHERE idVehiculo = ?
+`,
+    [idVehiculo]
+  );
+
+  // Si no tiene viajes → NO está ocupado
+  if (viajes.length === 0) {
+    return { activo: false };
+  }
+
+  // Buscar si alguno está en estado "activo"
+  const viajeActivo = viajes.some(
+    (v) => v.estado && v.estado.toLowerCase() === "activo"
+  );
+
+  
+  return {
+    activo: viajeActivo,
+    motivos: viajeActivo ? ["El vehículo está en viaje"] : [],
+  };
+};
+
+
 const obtenerVehiculos = async (filtros = {}) => {
-  let query = "SELECT * FROM Vehiculo WHERE 1=1";
+  let query = `
+              SELECT 
+                idVehiculo, 
+                anio,
+                marca,
+                modelo,
+                patente,
+                tipo
+              FROM Vehiculo WHERE 1=1`;
   const params = [];
 
   if (filtros.idVehiculo) {
@@ -80,10 +139,10 @@ const obtenerVehiculos = async (filtros = {}) => {
     query += " AND tipo LIKE ?";
     params.push(`%${filtros.tipo}%`);
   }
-  if (filtros.estado) {
+  /*if (filtros.estado) {
     query += " AND estado LIKE ?";
     params.push(`%${filtros.estado}%`);
-  }
+  }*/
 
   const [rows] = await db.query(query, params);
   return rows;
@@ -167,9 +226,63 @@ const eliminarVehiculo = async (id) => {
   return { message: "Vehículo eliminado correctamente" };
 };
 
+const calcularEstadoVehiculo = async (idVehiculo) => {
+  const docStatus = await verificarDocumentacion(idVehiculo);
+  const viajeStatus = await verificarViajeActivo(idVehiculo);
+
+  let estado;
+  const motivos = [];
+
+  if (viajeStatus.activo) {
+    estado = "OCUPADO";
+    motivos.push(...viajeStatus.motivos);
+  } else if (docStatus.cumpleRequisitos) {
+    estado = "HABILITADO";
+    motivos.push(...docStatus.motivos);
+  } else {
+    estado = "INHABILITADO";
+    motivos.push(...docStatus.motivos);
+  }
+
+  return {
+    estadoDisponibilidad: estado,
+    motivos,
+  };
+};
+
+
+// --- Consultar disponibilidad ---
+const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un estado
+
+  const vehiculos = await obtenerVehiculos();
+  const resultado = [];
+
+  for (const vehiculo of vehiculos) {
+    const { estadoDisponibilidad, motivos } =
+      await calcularEstadoVehiculo(vehiculo.idVehiculo);
+
+    // Si hay filtro y no coincide → salteo
+    if (
+      estadoFiltro &&
+      estadoDisponibilidad.toLowerCase() !== estadoFiltro.toLowerCase()
+    ) {
+      continue;
+    }
+
+    resultado.push({
+      ...vehiculo,
+      estadoDisponibilidad,
+      motivos,
+    });
+  }
+
+  return resultado;
+};
+
 module.exports = {
   obtenerVehiculos,
   crear,
   actualizar,
   eliminarVehiculo,
+  consultarDisponibilidad,
 };
