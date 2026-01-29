@@ -48,29 +48,32 @@ const verificarDocumentacion = async (idChofer) => {
 
   const motivos = [];
   
-console.log("DOCUMENTOS:", documentos);
-console.log("ULTIMO CARNET:", ultimoCarnet);
-console.log("ULTIMO APTO:", ultimoApto);
 
 
-  if (!ultimoCarnet) motivos.push("Falta carnet");
-  if (!ultimoApto) motivos.push("Falta apto físico");
-
-  if (motivos.length > 0) {
-    return { cumpleRequisitos: false, motivos };
-  }
-
-
-  //normalizo fechaVencimiento para comparar entre Date's
+ // Carnet
+if (!ultimoCarnet) {
+  motivos.push("Falta carnet");
+} else {
   const vencCarnet = normalizarFecha(ultimoCarnet.fechaVencimiento);
-  const vencApto = normalizarFecha(ultimoApto.fechaVencimiento);
-
-  if (!vencCarnet || vencCarnet < hoy) motivos.push("Carnet vencido");
-  if (!vencApto || vencApto < hoy) motivos.push("Apto físico vencido");
-
-  if (motivos.length > 0) {
-    return { cumpleRequisitos: false, motivos };
+  if (!vencCarnet || vencCarnet < hoy) {
+    motivos.push("Carnet vencido");
   }
+}
+
+// Apto físico
+if (!ultimoApto) {
+  motivos.push("Falta apto físico");
+} else {
+  const vencApto = normalizarFecha(ultimoApto.fechaVencimiento);
+  if (!vencApto || vencApto < hoy) {
+    motivos.push("Apto físico vencido");
+  }
+}
+
+if (motivos.length > 0) {
+  return { cumpleRequisitos: false, motivos };
+}
+
 
   return {
     cumpleRequisitos: true,
@@ -81,7 +84,7 @@ console.log("ULTIMO APTO:", ultimoApto);
 const verificarViajeActivo = async (idChofer) => {
   const [viajes] = await db.query(
     `
-  SELECT idViaje, estado
+  SELECT idViaje, fechaInicio, fechaFin
   FROM Viaje
   WHERE idChofer = ?
 `,
@@ -95,7 +98,9 @@ const verificarViajeActivo = async (idChofer) => {
 
   // Buscar si alguno está en estado "activo"
   const viajeActivo = viajes.some(
-    (v) => v.estado && v.estado.toLowerCase() === "activo"
+    (v) => if (v.fechaInicio < hoy an v.fechaFin > hoy) {
+      
+    } 
   );
 
   
