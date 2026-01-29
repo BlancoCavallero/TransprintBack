@@ -82,33 +82,34 @@ if (motivos.length > 0) {
 };
 
 const verificarViajeActivo = async (idChofer) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
   const [viajes] = await db.query(
     `
-  SELECT idViaje, fechaInicio, fechaFin
-  FROM Viaje
-  WHERE idChofer = ?
-`,
+    SELECT idViaje, fechaInicio, fechaFin
+    FROM Viaje
+    WHERE idChofer = ?
+    `,
     [idChofer]
   );
 
-  // Si no tiene viajes → NO está ocupado
   if (viajes.length === 0) {
     return { activo: false };
   }
 
-  // Buscar si alguno está en estado "activo"
-  const viajeActivo = viajes.some(
-    (v) => if (v.fechaInicio < hoy an v.fechaFin > hoy) {
-      
-    } 
-  );
+  const viajeActivo = viajes.some((v) => {
+    const inicio = normalizarFecha(v.fechaInicio);
+    const fin = normalizarFecha(v.fechaFin);
+    return inicio <= hoy && fin >= hoy;
+  });
 
-  
   return {
     activo: viajeActivo,
     motivos: viajeActivo ? ["El chofer está en viaje"] : [],
   };
 };
+
 
 // --- Registrar chofer ---
 const registrarChofer = async (data) => {
