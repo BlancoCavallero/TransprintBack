@@ -80,31 +80,35 @@ console.log("ULTIMO Seguro:", ultimoSeguro);
 };
 
 const verificarViajeActivo = async (idVehiculo) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
   const [viajes] = await db.query(
     `
-  SELECT idViaje, estado
-  FROM Viaje
-  WHERE idVehiculo = ?
-`,
+    SELECT fechaInicio, fechaFin
+    FROM Viaje
+    WHERE idVehiculo = ?
+    `,
     [idVehiculo]
   );
 
-  // Si no tiene viajes → NO está ocupado
+  
   if (viajes.length === 0) {
     return { activo: false };
   }
 
-  // Buscar si alguno está en estado "activo"
-  const viajeActivo = viajes.some(
-    (v) => v.estado && v.estado.toLowerCase() === "activo"
-  );
+  const viajeActivo = viajes.some((v) => {
+    const inicio = normalizarFecha(v.fechaInicio);
+    const fin = normalizarFecha(v.fechaFin);
+    return inicio <= hoy && fin >= hoy;
+  });
 
-  
   return {
     activo: viajeActivo,
-    motivos: viajeActivo ? ["El vehículo está en viaje"] : [],
+    motivos: viajeActivo ? ["El vehículo está asignado a un viaje"] : [],
   };
 };
+
 
 
 const obtenerVehiculos = async (filtros = {}) => {
