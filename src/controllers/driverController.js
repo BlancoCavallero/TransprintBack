@@ -32,15 +32,10 @@ const eliminarChofer = async (req, res, next) => {
 const obtenerChoferes = async (req, res, next) => {
   try {
     const { estado } = req.query;
-    let choferes;
-
-    if (estado) {
-      // Si se proporciona estado, consultar disponibilidad filtrada
-      choferes = await driverService.consultarDisponibilidad(estado);
-    } else {
-      // Si no se proporciona estado, devolver todos
-      choferes = await driverService.obtenerChoferes();
-    }
+    
+    const choferes = estado
+      ? await driverService.consultarDisponibilidad(estado)
+      : await driverService.consultarDisponibilidad();
 
     successResponse(res, choferes);
   } catch (error) {

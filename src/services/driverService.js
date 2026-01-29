@@ -1,53 +1,79 @@
 const db = require("../config/db");
 
+const normalizarFecha = (fecha) => {
+  if (fecha instanceof Date) {
+    fecha.setHours(0, 0, 0, 0);
+    return fecha;
+  }
+
+  // Si viene como YYYY-MM-DD
+  if (typeof fecha === "string" && fecha.includes("-")) {
+    const f = new Date(fecha);
+    f.setHours(0, 0, 0, 0);
+    return f;
+  }
+
+  // Si viene como DD/MM/YYYY
+  if (typeof fecha === "string" && fecha.includes("/")) {
+    const [d, m, y] = fecha.split("/");
+    return new Date(y, m - 1, d);
+  }
+
+  return null;
+};
+
 // --- Función para verificar la documentación de un chofer ---
 const verificarDocumentacion = async (idChofer) => {
+
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
   // Consultar todos los documentos del chofer
   const [documentos] = await db.query(
-    "SELECT nombre, fechaVencimiento FROM Documentacion WHERE idChofer = ?",
+    `SELECT nombre, fechaVencimiento 
+    FROM Documentacion 
+    WHERE idChofer = ? 
+    ORDER BY fechaVencimiento DESC`,
     [idChofer]
   );
 
-  if (!documentos.length) {
-    return {
-      cumpleRequisitos: false,
-      motivos: ["No tiene documentación cargada"],
-    };
-  }
-
-  // Filtrar todos los carnets y exámenes
-  const carnets = documentos.filter((d) =>
+    // Último carnet
+  const ultimoCarnet = documentos.find(d =>
     d.nombre.toLowerCase().includes("carnet")
   );
-  const examenes = documentos.filter((d) =>
-    d.nombre.toLowerCase().includes("examen")
+  // Último apto físico
+  const ultimoApto = documentos.find(d =>
+    d.nombre.toLowerCase().includes("apto fisico")
   );
 
-  const motivos = []; //no iria mas arriba en la linea 13?
-  if (carnets.length === 0) motivos.push("Falta carnet");
-  if (examenes.length === 0) motivos.push("Falta examen médico");
+  const motivos = [];
+  
 
-  if (motivos.length > 0) {
-    return { cumpleRequisitos: false, motivos };
+
+ // Carnet
+if (!ultimoCarnet) {
+  motivos.push("Falta carnet");
+} else {
+  const vencCarnet = normalizarFecha(ultimoCarnet.fechaVencimiento);
+  if (!vencCarnet || vencCarnet < hoy) {
+    motivos.push("Carnet vencido");
   }
+}
 
-  // Ver si AL MENOS UNO de cada tipo está vigente
-  const carnetVigente = carnets.some(
-    (c) => new Date(c.fechaVencimiento) >= hoy
-  );
-  const examenVigente = examenes.some(
-    (e) => new Date(e.fechaVencimiento) >= hoy
-  );
-
-  if (!carnetVigente) motivos.push("Carnet vencido");
-  if (!examenVigente) motivos.push("Examen médico vencido");
-
-  if (motivos.length > 0) {
-    return { cumpleRequisitos: false, motivos };
+// Apto físico
+if (!ultimoApto) {
+  motivos.push("Falta apto físico");
+} else {
+  const vencApto = normalizarFecha(ultimoApto.fechaVencimiento);
+  if (!vencApto || vencApto < hoy) {
+    motivos.push("Apto físico vencido");
   }
+}
+
+if (motivos.length > 0) {
+  return { cumpleRequisitos: false, motivos };
+}
+
 
   return {
     cumpleRequisitos: true,
@@ -56,32 +82,34 @@ const verificarDocumentacion = async (idChofer) => {
 };
 
 const verificarViajeActivo = async (idChofer) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
   const [viajes] = await db.query(
     `
-  SELECT idViaje, estado
-  FROM Viaje
-  WHERE idChofer = ?
-`,
+    SELECT idViaje, fechaInicio, fechaFin
+    FROM Viaje
+    WHERE idChofer = ?
+    `,
     [idChofer]
   );
 
-  // Si no tiene viajes → NO está ocupado
   if (viajes.length === 0) {
     return { activo: false };
   }
 
-  // Buscar si alguno está en estado "activo"
-  const viajeActivo = viajes.some(
-    (v) => v.estado && v.estado.toLowerCase() === "activo"
-  );
-
-  //
+  const viajeActivo = viajes.some((v) => {
+    const inicio = normalizarFecha(v.fechaInicio);
+    const fin = normalizarFecha(v.fechaFin);
+    return inicio <= hoy && fin >= hoy;
+  });
 
   return {
     activo: viajeActivo,
     motivos: viajeActivo ? ["El chofer está en viaje"] : [],
   };
 };
+
 
 // --- Registrar chofer ---
 const registrarChofer = async (data) => {
@@ -269,7 +297,7 @@ const eliminarChofer = async (idChofer) => {
     `SELECT idVehiculo FROM ChoferXVehiculo WHERE idChofer = ?`,
     [idChofer]
   );
-
+//al final no se le asigna el vehiculo, borrar esta funcionalidad :
   if (relacion) {
     // Liberar el vehículo
     await db.query(
@@ -292,8 +320,11 @@ const eliminarChofer = async (idChofer) => {
 // --- Obtener todos los choferes ---
 const obtenerChoferes = async () => {
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad, c.idPersona,
-           p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
+    SELECT c.idChofer, c.dni, c.idPersona,
+       p.nombre AS personaNombre,
+       p.apellido AS personaApellido,
+       p.cuit AS personaCuit,
+       p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
   `);
@@ -301,7 +332,6 @@ const obtenerChoferes = async () => {
   const mapped = rows.map((r) => ({
     idChofer: r.idChofer,
     dni: r.dni,
-    estadoDisponibilidad: r.estadoDisponibilidad,
     idPersona: r.idPersona,
     persona: r.idPersona
       ? {
@@ -321,7 +351,7 @@ const obtenerChoferes = async () => {
 const obtenerPorId = async (idChofer) => {
   const [[r]] = await db.query(
     `
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad, c.idPersona,
+    SELECT c.idChofer, c.dni, c.idPersona,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -333,7 +363,6 @@ const obtenerPorId = async (idChofer) => {
   return {
     idChofer: r.idChofer,
     dni: r.dni,
-    estadoDisponibilidad: r.estadoDisponibilidad,
     idPersona: r.idPersona,
     persona: r.idPersona
       ? {
@@ -345,6 +374,9 @@ const obtenerPorId = async (idChofer) => {
         }
       : null,
   };
+// ⚠️ estadoDisponibilidad NO se obtiene de BD
+// Se calcula siempre dinámicamente
+
 };
 
 const obtenerChoferesCompleto = async () => {
@@ -479,40 +511,56 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
   return rows;
 };
 
+const calcularEstadoChofer = async (idChofer) => {
+  const docStatus = await verificarDocumentacion(idChofer);
+  const viajeStatus = await verificarViajeActivo(idChofer);
+
+  let estado;
+  const motivos = [];
+
+  if (viajeStatus.activo) {
+    estado = "OCUPADO";
+    motivos.push(...viajeStatus.motivos);
+  } else if (docStatus.cumpleRequisitos) {
+    estado = "HABILITADO";
+    motivos.push(...docStatus.motivos);
+  } else {
+    estado = "INHABILITADO";
+    motivos.push(...docStatus.motivos);
+  }
+
+  return {
+    estadoDisponibilidad: estado,
+    motivos,
+  };
+};
+
+
 // --- Consultar disponibilidad ---
-const consultarDisponibilidad = async (estado) => {
-  const choferes = await obtenerChoferesCompleto();
+const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un estado
+
+  const choferes = await obtenerChoferes();
   const resultado = [];
 
   for (const chofer of choferes) {
-    const docStatus = await verificarDocumentacion(chofer.idChofer);
-    const viajeStatus = await verificarViajeActivo(chofer.idChofer);
+    const { estadoDisponibilidad, motivos } =
+      await calcularEstadoChofer(chofer.idChofer);
 
-    let estadoActualizado;
-
-    if (viajeStatus.activo) {
-      estadoActualizado = "Ocupado";
-    } else if (docStatus.cumpleRequisitos) {
-      estadoActualizado = "Libre";
-    } else {
-      estadoActualizado = "Inhabilitado";
+    // Si hay filtro y no coincide → salteo
+    if (
+      estadoFiltro &&
+      estadoDisponibilidad.toLowerCase() !== estadoFiltro.toLowerCase()
+    ) {
+      continue;
     }
 
-    // Actualizar en base de datos
-    await db.query(
-      "UPDATE Chofer SET estadoDisponibilidad = ? WHERE idChofer = ?",
-      [estadoActualizado, chofer.idChofer]
-    );
-
-    // Filtrar por estado pedido
-    if (estadoActualizado.toLowerCase() === estado.toLowerCase()) {
-      resultado.push({
-        ...chofer,
-        estadoDisponibilidad: estadoActualizado,
-        motivos: [...(docStatus.motivos || []), ...(viajeStatus.motivos || [])],
-      });
-    }
+    resultado.push({
+      ...chofer,
+      estadoDisponibilidad,
+      motivos,
+    });
   }
+
   return resultado;
 };
 

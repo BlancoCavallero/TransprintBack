@@ -39,10 +39,15 @@ const obtenerMantenimientos = async (filtros = {}) => {
 
   const [rows] = await db.query(query, values);
 
-  return rows.map((mantenimiento) => ({
+  return rows.map((mantenimiento) => {
+  const fechaInicio = formatFecha(mantenimiento.fechaInicio);
+  const fechaFin = formatFecha(mantenimiento.fechaFin);
+
+  return {
     idMantenimiento: mantenimiento.idMantenimiento,
-    fechaInicio: formatFecha(mantenimiento.fechaInicio),
-    fechaFin: formatFecha(mantenimiento.fechaFin),
+    fechaInicio,
+    fechaFin,
+    estado: calcularEstadoMantenimiento(fechaInicio, fechaFin), // 👈 ACÁ
     observaciones: mantenimiento.observaciones,
     tipo: mantenimiento.tipo,
     vehiculo: mantenimiento.vehiculoId
@@ -54,7 +59,8 @@ const obtenerMantenimientos = async (filtros = {}) => {
           tipo: mantenimiento.vehiculoTipo,
         }
       : null,
-  }));
+  };
+});
 };
 
 const obtenerMantenimientoPorId = async (id) => {
@@ -70,10 +76,14 @@ const obtenerMantenimientoPorId = async (id) => {
 
   if (rows[0]) {
     const r = rows[0];
+    const fechaInicio = formatFecha(r.fechaInicio);
+    const fechaFin = formatFecha(r.fechaFin);
+
     return {
       idMantenimiento: r.idMantenimiento,
-      fechaInicio: formatFecha(r.fechaInicio),
-      fechaFin: formatFecha(r.fechaFin),
+      fechaInicio,
+      fechaFin,
+      estado: calcularEstadoMantenimiento(fechaInicio, fechaFin), // 👈 ACÁ
       observaciones: r.observaciones,
       tipo: r.tipo,
       vehiculo: r.vehiculoId
@@ -165,10 +175,23 @@ const formatFecha = (fecha) => {
   return `${year}-${month}-${day}`;
 };
 
+const calcularEstadoMantenimiento = (fechaInicio, fechaFin) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const inicio = new Date(fechaInicio);
+  const fin = new Date(fechaFin);
+
+  if (hoy < inicio) return "PENDIENTE";
+  if (hoy > fin) return "FINALIZADO";
+  return "EN CURSO";
+};
+
 module.exports = {
   obtenerMantenimientos,
   obtenerMantenimientoPorId,
   crear,
   actualizar,
   eliminarMantenimiento,
+  calcularEstadoMantenimiento,
 };
