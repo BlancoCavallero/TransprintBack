@@ -48,11 +48,6 @@ const verificarDocumentacion = async (idVehiculo) => {
   );
 
   const motivos = [];
-  
-console.log("DOCUMENTOS:", documentos);
-console.log("ULTIMa Vtv:", ultimaVtv);
-console.log("ULTIMO Seguro:", ultimoSeguro);
-
 
   if (!ultimaVtv) motivos.push("Falta VTV");
   if (!ultimoSeguro) motivos.push("Falta Seguro");
@@ -130,7 +125,7 @@ const verificarMantenimientoActivo = async (idVehiculo) => {
   const mantenimientoActivo = mantenimientos.some((v) => {
     const inicio = normalizarFecha(v.fechaInicio);
     const fin = normalizarFecha(v.fechaFin);
-    return inicio <= hoy && fin >= hoy;
+    return inicio <= hoy && fin > hoy;
   });
 
   return {
