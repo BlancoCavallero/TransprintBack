@@ -291,7 +291,7 @@ const eliminarChofer = async (idChofer) => {
     `SELECT idVehiculo FROM ChoferXVehiculo WHERE idChofer = ?`,
     [idChofer]
   );
-
+//al final no se le asigna el vehiculo, borrar esta funcionalidad :
   if (relacion) {
     // Liberar el vehículo
     await db.query(
@@ -314,8 +314,11 @@ const eliminarChofer = async (idChofer) => {
 // --- Obtener todos los choferes ---
 const obtenerChoferes = async () => {
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad, c.idPersona,
-           p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
+    SELECT c.idChofer, c.dni, c.idPersona,
+       p.nombre AS personaNombre,
+       p.apellido AS personaApellido,
+       p.cuit AS personaCuit,
+       p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
   `);
@@ -323,7 +326,6 @@ const obtenerChoferes = async () => {
   const mapped = rows.map((r) => ({
     idChofer: r.idChofer,
     dni: r.dni,
-    estadoDisponibilidad: r.estadoDisponibilidad,
     idPersona: r.idPersona,
     persona: r.idPersona
       ? {
@@ -343,7 +345,7 @@ const obtenerChoferes = async () => {
 const obtenerPorId = async (idChofer) => {
   const [[r]] = await db.query(
     `
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad, c.idPersona,
+    SELECT c.idChofer, c.dni, c.idPersona,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -355,7 +357,6 @@ const obtenerPorId = async (idChofer) => {
   return {
     idChofer: r.idChofer,
     dni: r.dni,
-    estadoDisponibilidad: r.estadoDisponibilidad,
     idPersona: r.idPersona,
     persona: r.idPersona
       ? {
@@ -367,6 +368,9 @@ const obtenerPorId = async (idChofer) => {
         }
       : null,
   };
+// ⚠️ estadoDisponibilidad NO se obtiene de BD
+// Se calcula siempre dinámicamente
+
 };
 
 const obtenerChoferesCompleto = async () => {
@@ -501,41 +505,56 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
   return rows;
 };
 
-// --- Consultar disponibilidad ---
-const consultarDisponibilidad = async (estado) => { //aca no se le pasa un estado
+const calcularEstadoChofer = async (idChofer) => {
+  const docStatus = await verificarDocumentacion(idChofer);
+  const viajeStatus = await verificarViajeActivo(idChofer);
 
-  const choferes = await obtenerChoferesCompleto();
+  let estado;
+  const motivos = [];
+
+  if (viajeStatus.activo) {
+    estado = "OCUPADO";
+    motivos.push(...viajeStatus.motivos);
+  } else if (docStatus.cumpleRequisitos) {
+    estado = "HABILITADO";
+    motivos.push(...docStatus.motivos);
+  } else {
+    estado = "INHABILITADO";
+    motivos.push(...docStatus.motivos);
+  }
+
+  return {
+    estadoDisponibilidad: estado,
+    motivos,
+  };
+};
+
+
+// --- Consultar disponibilidad ---
+const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un estado
+
+  const choferes = await obtenerChoferes();
   const resultado = [];
 
   for (const chofer of choferes) {
-    const docStatus = await verificarDocumentacion(chofer.idChofer);
-    const viajeStatus = await verificarViajeActivo(chofer.idChofer);
+    const { estadoDisponibilidad, motivos } =
+      await calcularEstadoChofer(chofer.idChofer);
 
-    let estadoActualizado;
-
-    if (viajeStatus.activo) {
-      estadoActualizado = "OCUPADO";
-    } else if (docStatus.cumpleRequisitos) {
-      estadoActualizado = "HABILITADO";
-    } else {
-      estadoActualizado = "INHABILITADO";
+    // Si hay filtro y no coincide → salteo
+    if (
+      estadoFiltro &&
+      estadoDisponibilidad.toLowerCase() !== estadoFiltro.toLowerCase()
+    ) {
+      continue;
     }
 
-    // Actualizar en base de datos
-    await db.query(
-      "UPDATE Chofer SET estadoDisponibilidad = ? WHERE idChofer = ?",
-      [estadoActualizado, chofer.idChofer]
-    );
-
-    // Filtrar por estado pedido
-    if (estadoActualizado.toLowerCase() === estado.toLowerCase()) {
-      resultado.push({
-        ...chofer,
-        estadoDisponibilidad: estadoActualizado,
-        motivos: [...(docStatus.motivos || []), ...(viajeStatus.motivos || [])],
-      });
-    }
+    resultado.push({
+      ...chofer,
+      estadoDisponibilidad,
+      motivos,
+    });
   }
+
   return resultado;
 };
 

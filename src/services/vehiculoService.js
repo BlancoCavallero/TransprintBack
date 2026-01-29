@@ -1,5 +1,61 @@
 const db = require("../config/db");
 
+// --- Función para verificar la documentación de un Vehiculo ---
+const verificarDocumentacion = async (idVehiculo) => {
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  // Consultar todos los documentos del Vehiculo
+  const [documentos] = await db.query(
+    `SELECT nombre, fechaVencimiento 
+    FROM Documentacion 
+    WHERE idVehiculo = ? 
+    ORDER BY fechaVencimiento DESC`,
+    [idVehiculo]
+  );
+
+  // Última Vtv
+  const ultimaVtv = documentos.find(d =>
+    d.nombre.toLowerCase().includes("vtv")
+  );
+  // Último seguro
+  const ultimoSeguro = documentos.find(d =>
+    d.nombre.toLowerCase().includes("seguro")
+  );
+
+  const motivos = [];
+  
+console.log("DOCUMENTOS:", documentos);
+console.log("ULTIMa Vtv:", ultimaVtv);
+console.log("ULTIMO Seguro:", ultimoSeguro);
+
+
+  if (!ultimaVtv) motivos.push("Falta VTV");
+  if (!ultimoSeguro) motivos.push("Falta Seguro");
+
+  if (motivos.length > 0) {
+    return { cumpleRequisitos: false, motivos };
+  }
+
+
+  //normalizo fechaVencimiento para comparar entre Date's
+  const vencVtv = normalizarFecha(ultimaVtv.fechaVencimiento);
+  const vencSeguro = normalizarFecha(ultimoSeguro.fechaVencimiento);
+
+  if (!vencVtv || vencVtv < hoy) motivos.push("VTV vencida");
+  if (!vencSeguro || vencSeguro < hoy) motivos.push("Seguro vencido");
+
+  if (motivos.length > 0) {
+    return { cumpleRequisitos: false, motivos };
+  }
+
+  return {
+    cumpleRequisitos: true,
+    motivos: ["Documentación completa y vigente"],
+  };
+};
+
 const obtenerVehiculos = async (filtros = {}) => {
   let query = "SELECT * FROM Vehiculo WHERE 1=1";
   const params = [];
@@ -34,11 +90,11 @@ const obtenerVehiculos = async (filtros = {}) => {
 };
 
 const crear = async (vehiculo) => {
-  const { anio, estado, marca, modelo, patente, tipo } = vehiculo;
+  const { anio, marca, modelo, patente, tipo } = vehiculo;
 
-  if (!patente || !marca || !modelo || !estado) {
+  if (!patente || !marca || !modelo) {
     const error = new Error(
-      "Faltan campos obligatorios (patente, marca, modelo, estado)"
+      "Faltan campos obligatorios (patente, marca, modelo)"
     );
     error.statusCode = 400;
     throw error;
@@ -56,8 +112,8 @@ const crear = async (vehiculo) => {
   }
 
   const [result] = await db.query(
-    "INSERT INTO Vehiculo (anio, estado, marca, modelo, patente, tipo) VALUES (?, ?, ?, ?, ?, ?)",
-    [anio, estado.toLowerCase(), marca, modelo, patente, tipo]
+    "INSERT INTO Vehiculo (anio, estado, marca, modelo, patente, tipo) VALUES (?, 'Inhabilitado', ?, ?, ?, ?)",
+    [anio, marca, modelo, patente, tipo]
   );
   return { idVehiculo: result.insertId, ...vehiculo };
 };
