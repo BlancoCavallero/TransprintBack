@@ -19,7 +19,6 @@ const obtenerVehiculosConMantenimientos = async () => {
         placa: v.patente,
         marca: v.marca,
         modelo: v.modelo,
-
         mantenimientos: mantenimientos.map((m) => ({
           id: m.idMantenimiento,
           fechaInicio: m.fechaInicio,
@@ -36,7 +35,6 @@ const obtenerVehiculosConMantenimientos = async () => {
     vehiculos: vehiculosConMantenimientos,
   };
 };
-
 
 const obtenerMantenimientosPorVehiculo = async (idVehiculo) => {
   const mantenimientos = await mantenimientoService.obtenerMantenimientos({
