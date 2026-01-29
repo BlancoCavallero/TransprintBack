@@ -109,7 +109,35 @@ const verificarViajeActivo = async (idVehiculo) => {
   };
 };
 
+const verificarMantenimientoActivo = async (idVehiculo) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
 
+  const [mantenimientos] = await db.query(
+    `
+    SELECT fechaInicio, fechaFin
+    FROM Mantenimiento
+    WHERE idVehiculo = ?
+    `,
+    [idVehiculo]
+  );
+
+  
+  if (mantenimientos.length === 0) {
+    return { activo: false };
+  }
+
+  const mantenimientoActivo = mantenimientos.some((v) => {
+    const inicio = normalizarFecha(v.fechaInicio);
+    const fin = normalizarFecha(v.fechaFin);
+    return inicio <= hoy && fin >= hoy;
+  });
+
+  return {
+    activo: mantenimientoActivo,
+    motivos: mantenimientoActivo ? ["El vehículo está en mantenimiento"] : [],
+  };
+};
 
 const obtenerVehiculos = async (filtros = {}) => {
   let query = `
@@ -233,18 +261,26 @@ const eliminarVehiculo = async (id) => {
 const calcularEstadoVehiculo = async (idVehiculo) => {
   const docStatus = await verificarDocumentacion(idVehiculo);
   const viajeStatus = await verificarViajeActivo(idVehiculo);
+  const mantenimientoStatus = await verificarMantenimientoActivo(idVehiculo);
 
   let estado;
   const motivos = [];
 
-  if (viajeStatus.activo) {
+
+  if (mantenimientoStatus.activo) {
+    estado = "EN_MANTENIMIENTO";
+    motivos.push(...mantenimientoStatus.motivos);
+
+  } else if (viajeStatus.activo) {
     estado = "OCUPADO";
     motivos.push(...viajeStatus.motivos);
-  } else if (docStatus.cumpleRequisitos) {
-    estado = "HABILITADO";
-    motivos.push(...docStatus.motivos);
-  } else {
+
+  } else if (!docStatus.cumpleRequisitos) {
     estado = "INHABILITADO";
+    motivos.push(...docStatus.motivos);
+
+  } else {
+    estado = "HABILITADO";
     motivos.push(...docStatus.motivos);
   }
 
@@ -256,7 +292,7 @@ const calcularEstadoVehiculo = async (idVehiculo) => {
 
 
 // --- Consultar disponibilidad ---
-const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un estado
+const consultarDisponibilidad = async (estadoFiltro) => { 
 
   const vehiculos = await obtenerVehiculos();
   const resultado = [];
