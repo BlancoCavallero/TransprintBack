@@ -116,12 +116,19 @@
     try {
         const vehiculos = await vehiculoService.obtenerVehiculos();
 
+        let total = 0;
         let habilitados = 0;
         let inhabilitados = 0;
         let ocupados = 0;
         let enMantenimiento = 0;
 
         for (const v of vehiculos) {
+
+        // 🔴 NO contar vehiculos dados de baja
+        if (v.activo === 0) continue;
+        
+        total++;
+
         const { estadoDisponibilidad } =
             await vehiculoService.calcularEstadoVehiculo(v.idVehiculo);
 
@@ -142,7 +149,7 @@
         }
 
         return {
-        total: vehiculos.length,
+        total,
         habilitados,
         inhabilitados,
         ocupados,
