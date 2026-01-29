@@ -1,5 +1,6 @@
 const driverService = require("../services/driverService");
 const { successResponse, errorResponse } = require("../utils/response");
+const choferViaticosService = require("../services/choferViaticosService");
 
 const registrarChofer = async (req, res, next) => {
   try {
@@ -130,6 +131,22 @@ const consultarHistorial = async (req, res, next) => {
 
 // --- Asignar Vehículo (DEPRECADO - Ya no se usa, la asignación se maneja en Viajes) ---
 
+
+const obtenerResumenViaticos = async (req, res) => {
+  try {
+    const resumenChoferes =
+      await choferViaticosService.obtenerResumenViaticosChoferes();
+
+    res.json({ resumenChoferes });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener resumen de viáticos"
+    });
+  }
+};
+
 module.exports = {
   registrarChofer,
   modificarChofer,
@@ -138,4 +155,5 @@ module.exports = {
   obtenerChoferId,
   obtenerChoferesFiltradosController,
   consultarHistorial,
+  obtenerResumenViaticos
 };
