@@ -16,13 +16,6 @@ const validarCreacionVehiculo = [
     }),
   body("marca").notEmpty().withMessage("La marca es obligatoria"),
   body("modelo").notEmpty().withMessage("El modelo es obligatorio"),
-  body("estado")
-    .notEmpty().withMessage("El estado es obligatorio")
-    .bail()
-    .isString().withMessage("Estado inválido")
-    .trim()
-    .toLowerCase()
-    .isIn(["activo", "inactivo", "mantenimiento"]).withMessage("El estado no es válido"),
   body("anio")
     .optional()
     .isInt({ min: 1900, max: new Date().getFullYear() })
