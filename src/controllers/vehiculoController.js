@@ -1,12 +1,19 @@
 const vehiculoService = require("../services/vehiculoService");
 const { successResponse, errorResponse } = require("../utils/response");
-
+const vehiculoResumenService = require("../services/vehiculoResumenService");
 
 const obtenerVehiculos = async (req, res, next) => {
   try {
-    const filtros = req.query;
+    const { estado } = req.query;
+        
+        const vehiculos = estado
+          ? await vehiculoService.consultarDisponibilidad(estado)
+          : await vehiculoService.consultarDisponibilidad();
+    
+        successResponse(res, vehiculos);
+    /*const filtros = req.query;
     const vehiculos = await vehiculoService.obtenerVehiculos(filtros);
-    successResponse(res, vehiculos);
+    successResponse(res, vehiculos);*/
   } catch (error) {
     next(error);
   }
@@ -39,9 +46,35 @@ const eliminarVehiculo = async (req, res, next) => {
   }
 };
 
+const obtenerVehiculosConMantenimientos = async (req, res, next) => {
+  try {
+    const vehiculos =
+      await vehiculoResumenService.obtenerVehiculosConMantenimientos();
+
+    res.json({ vehiculos });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerMantenimientosDeVehiculo = async (req, res, next) => {
+  try {
+    const { idVehiculo } = req.params;
+
+    const resultado =
+      await vehiculoResumenService.obtenerMantenimientosPorVehiculo(idVehiculo);
+
+    res.json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   obtenerVehiculos,
   crearVehiculo,
   actualizarVehiculo,
   eliminarVehiculo,
+  obtenerVehiculosConMantenimientos,
+  obtenerMantenimientosDeVehiculo,
 };

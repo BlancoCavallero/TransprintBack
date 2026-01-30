@@ -36,4 +36,6 @@ router.delete("/:id", driverController.eliminarChofer);
 
 router.get("/:id/historial", driverController.consultarHistorial); // probar en postman
 
+router.get("/:id/viaticos-resumen", driverController.obtenerResumenViaticos);
+
 module.exports = router;
