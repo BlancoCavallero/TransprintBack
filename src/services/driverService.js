@@ -343,6 +343,7 @@ const obtenerChoferes = async () => {
     idChofer: r.idChofer,
     dni: r.dni,
     activo: r.activo,
+    activo: r.activo,
     idPersona: r.idPersona,
     persona: r.idPersona
       ? {
@@ -362,7 +363,7 @@ const obtenerChoferes = async () => {
 const obtenerPorId = async (idChofer) => {
   const [[r]] = await db.query(
     `
-    SELECT c.idChofer, c.dni, c.activo, c.idPersona,
+    SELECT c.idChofer, c.dni, c.activo, c.activo, c.idPersona,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -374,6 +375,7 @@ const obtenerPorId = async (idChofer) => {
   const base = {
     idChofer: r.idChofer,
     dni: r.dni,
+    activo: r.activo,
     activo: r.activo,
     idPersona: r.idPersona,
     persona: r.idPersona
@@ -430,6 +432,7 @@ const obtenerPorId = async (idChofer) => {
 
   return rows;
 };
+
 
 
 // --- Obtener un chofer por nombre---
@@ -609,6 +612,7 @@ const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un
 module.exports = {
   registrarChofer,
   modificarChofer,
+  bajaChofer,
   bajaChofer,
   obtenerChoferes,
   obtenerPorId,
