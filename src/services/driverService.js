@@ -169,7 +169,7 @@ const registrarChofer = async (data) => {
   }
 
   const [result] = await db.query(
-    "INSERT INTO Chofer (dni, estadoDisponibilidad, idPersona) VALUES (?, 'Inhabilitado', ?)",
+    "INSERT INTO Chofer (dni, estadoDisponibilidad, idPersona) VALUES (?, 'Inhabilitado', ?)", //chequear valor estadoDisponibilidad, posible accion innecesaria.
     [dni, idPersonaFinal]
   );
 
@@ -282,8 +282,8 @@ const modificarChofer = async (idChofer, data) => {
   return await obtenerPorId(idChofer);
 };
 
-// --- Eliminar chofer ---
-const eliminarChofer = async (idChofer) => {
+// --- Dar de baja un chofer ---
+const bajaChofer = async (idChofer, accion) => {
   const { activo: estaEnViaje } = await verificarViajeActivo(idChofer);
   console.log(estaEnViaje);
 
@@ -292,7 +292,7 @@ const eliminarChofer = async (idChofer) => {
     throw new Error("El chofer se encuentra en viaje y no puede eliminarse");
   }
 
-  // Buscar si tiene un vehículo asignado
+  /* Buscar si tiene un vehículo asignado
   const [[relacion]] = await db.query(
     `SELECT idVehiculo FROM ChoferXVehiculo WHERE idChofer = ?`,
     [idChofer]
@@ -309,18 +309,31 @@ const eliminarChofer = async (idChofer) => {
     await db.query("DELETE FROM ChoferXVehiculo WHERE idChofer = ?", [
       idChofer,
     ]);
-  }
+  }*/
   // Inhabilitar chofer
+  if (!["baja", "reactivar"].includes(accion)) {
+        throw new Error("Acción invalida, ingrese 'baja' o 'reactivar' ");
+  }
+
+  if(accion == "baja") {
   await db.query(
-    "UPDATE Chofer SET estadoDisponibilidad = 'Inhabilitado' WHERE idChofer = ?", // es incoherente ya que si lo dejo como inhabilitado, cuando consulto su estadoDisponibilidad se calcula devuelta y me traeria la respuesta desde esa funcion
+    "UPDATE Chofer SET activo = 0 WHERE idChofer = ?",
     [idChofer]
   );
+  } else if (accion == "reactivar") {
+  await db.query(
+    "UPDATE Chofer SET activo = 1 WHERE idChofer = ?",
+    [idChofer]
+  );
+} 
+return await obtenerPorId(idChofer);
+
 };
 
 // --- Obtener todos los choferes ---
 const obtenerChoferes = async () => {
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.idPersona,
+    SELECT c.idChofer, c.dni, c.activo, c.idPersona,
        p.nombre AS personaNombre,
        p.apellido AS personaApellido,
        p.cuit AS personaCuit,
@@ -332,6 +345,7 @@ const obtenerChoferes = async () => {
   const mapped = rows.map((r) => ({
     idChofer: r.idChofer,
     dni: r.dni,
+    activo: r.activo,
     idPersona: r.idPersona,
     persona: r.idPersona
       ? {
@@ -351,7 +365,7 @@ const obtenerChoferes = async () => {
 const obtenerPorId = async (idChofer) => {
   const [[r]] = await db.query(
     `
-    SELECT c.idChofer, c.dni, c.idPersona,
+    SELECT c.idChofer, c.dni, c.activo, c.idPersona,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -363,6 +377,7 @@ const obtenerPorId = async (idChofer) => {
   return {
     idChofer: r.idChofer,
     dni: r.dni,
+    activo: r.activo,
     idPersona: r.idPersona,
     persona: r.idPersona
       ? {
@@ -379,7 +394,7 @@ const obtenerPorId = async (idChofer) => {
 
 };
 
-const obtenerChoferesCompleto = async () => {
+/*const obtenerChoferesCompleto = async () => {
   const [rows] = await db.query(`
     SELECT DISTINCT
       c.idChofer,
@@ -396,7 +411,7 @@ const obtenerChoferesCompleto = async () => {
   return rows;
 };
 
-/*
+
 // --- Obtener un chofer por nombre---
 const obtenerPorNombre = async (nombre) => {
   const [rows] = await db.query(`
@@ -512,12 +527,16 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
 };
 
 const calcularEstadoChofer = async (idChofer) => {
+
+  // si NO está de baja, lógica normal
   const docStatus = await verificarDocumentacion(idChofer);
   const viajeStatus = await verificarViajeActivo(idChofer);
 
   let estado;
   const motivos = [];
 
+  
+  
   if (viajeStatus.activo) {
     estado = "OCUPADO";
     motivos.push(...viajeStatus.motivos);
@@ -534,7 +553,6 @@ const calcularEstadoChofer = async (idChofer) => {
     motivos,
   };
 };
-
 
 // --- Consultar disponibilidad ---
 const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un estado
@@ -564,6 +582,8 @@ const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un
   return resultado;
 };
 
+
+
 // --- Asignar vehiculo a chofer (DEPRECADO - Ya no se usa) ---
 // Esta función ya no es necesaria ya que los viajes manejan la asignación temporal
 // const asignarVehiculo = async (idChofer, idVehiculo) => {
@@ -573,10 +593,10 @@ const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un
 module.exports = {
   registrarChofer,
   modificarChofer,
-  eliminarChofer,
+  bajaChofer,
   obtenerChoferes,
   obtenerPorId,
-
+  calcularEstadoChofer,
   obtenerChoferesFiltrados,
   verificarDocumentacion,
   consultarHistorial,

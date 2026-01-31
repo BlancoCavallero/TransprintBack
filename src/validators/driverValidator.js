@@ -44,6 +44,7 @@ const validarChofer = [
     .withMessage("El DNI debe ser un número válido de hasta 8 dígitos"),
 
   body("estadoDisponibilidad")
+  .optional()
   .custom(() => {
     throw new Error("El estadoDisponibilidad no puede registrarse manualmente")
   }),
@@ -58,6 +59,7 @@ const validarChoferActualizacion = [
     .withMessage("El DNI debe ser un número válido de hasta 8 dígitos"),
 
   body("estadoDisponibilidad")
+  .optional()
   .custom(() => {
     throw new Error("El estadoDisponibilidad no puede modificarse manualmente")
   }),
