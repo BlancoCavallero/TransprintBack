@@ -1,5 +1,8 @@
 // src/services/dashboardService.js
 const db = require('../config/db');
+const vehiculoService = require('./vehiculoService');
+const driverService = require('./driverService');
+
 
 const obtenerDatosDashboard = async () => {
     try {
@@ -28,9 +31,15 @@ const obtenerDatosDashboard = async () => {
                 total: 0
             },
             alertas: {
-                licenciasVencidas: 0,
-                documentacionVehiculosPorVencer: 0
-            }
+                choferes: {
+                    licenciasVencidas: 0,
+                    licenciasPorVencer: 0
+                },
+                vehiculos: {
+                    documentacionVencida: 0,
+                    documentacionPorVencer: 0
+                }
+                }
         };
 
         // Obtener datos secuencialmente para mejor control
@@ -82,7 +91,7 @@ const obtenerDatosDashboard = async () => {
             totalChoferes: { total: 0, habilitados: 0, inhabilitados: 0, ocupados: 0 },
             viajesEnCurso: 0,
             mantenimientosInfo: { enCurso: 0, pendientes: 0, finalizados: 0, total: 0 },
-            alertas: { licenciasVencidas: 0, documentacionVehiculosPorVencer: 0 }
+            alertas: { documentacionVencidas: 0, documentacionVehiculosPorVencer: 0 }
         };
     }
 };
@@ -102,95 +111,131 @@ const obtenerTotalClientes = async () => {
 
 // 2. Vehiculos por estado (HABILITADO, INHABILITADO, OCUPADO)
 const obtenerVehiculosPorEstado = async () => {
-    try {
-        // Consulta para vehiculos por estado
-        const [rows] = await db.query(`
-            SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN estado = 'HABILITADO' THEN 1 ELSE 0 END) as habilitados,
-                SUM(CASE WHEN estado = 'INHABILITADO' THEN 1 ELSE 0 END) as inhabilitados,
-                SUM(CASE WHEN estado = 'OCUPADO' THEN 1 ELSE 0 END) as ocupados
-            FROM Vehiculo
-            WHERE estado IS NOT NULL
-        `);
-        
-        const data = rows[0] || { total: 0, habilitados: 0, inhabilitados: 0, ocupados: 0 };
-        
-        // Vehiculos en mantenimiento (de la tabla Mantenimiento)
-        let enMantenimiento = 0;
-        try {
-            const [mantenimientos] = await db.query(`
-                SELECT COUNT(DISTINCT m.idVehiculo) as total
-                FROM Mantenimiento m
-                INNER JOIN Vehiculo v ON m.idVehiculo = v.idVehiculo
-                WHERE (m.fechaFin IS NULL OR m.fechaFin >= CURDATE())
-                    AND m.fechaInicio <= CURDATE()
-                    AND v.estado != 'INHABILITADO'
-            `);
-            enMantenimiento = mantenimientos[0]?.total || 0;
-        } catch (error) {
-            console.warn('Error calculando vehiculos en mantenimiento:', error.message);
-        }
-        
-        return {
-            total: data.total || 0,
-            habilitados: data.habilitados || 0,
-            inhabilitados: data.inhabilitados || 0,
-            ocupados: data.ocupados || 0,
-            enMantenimiento: enMantenimiento
-        };
-    } catch (error) {
-        console.warn('Error en obtenerVehiculosPorEstado:', error.message);
-        return {
-            total: 0,
-            habilitados: 0,
-            inhabilitados: 0,
-            ocupados: 0,
-            enMantenimiento: 0
-        };
+  try {
+    // Traigo todos los vehículos
+    const vehiculos = await vehiculoService.obtenerVehiculos();
+
+    let habilitados = 0;
+    let inhabilitados = 0;
+    let ocupados = 0;
+    let enMantenimiento = 0;
+
+    for (const v of vehiculos) {
+      const { estadoDisponibilidad } =
+        await vehiculoService.calcularEstadoVehiculo(v.idVehiculo);
+
+      switch (estadoDisponibilidad) {
+        case 'HABILITADO':
+          habilitados++;
+          break;
+        case 'INHABILITADO':
+          inhabilitados++;
+          break;
+        case 'OCUPADO':
+          ocupados++;
+          break;
+        case 'EN_MANTENIMIENTO':
+          enMantenimiento++;
+          break;
+      }
     }
+
+    return {
+      total: vehiculos.length,
+      habilitados,
+      inhabilitados,
+      ocupados,
+      enMantenimiento
+    };
+
+  } catch (error) {
+    console.warn('Error en obtenerVehiculosPorEstado:', error.message);
+    return {
+      total: 0,
+      habilitados: 0,
+      inhabilitados: 0,
+      ocupados: 0,
+      enMantenimiento: 0
+    };
+  }
 };
+
+
 
 // 3. Choferes por estado (HABILITADO, INHABILITADO, OCUPADO)
 const obtenerChoferesPorEstado = async () => {
-    try {
-        const [rows] = await db.query(`
-            SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN estado = 'HABILITADO' THEN 1 ELSE 0 END) as habilitados,
-                SUM(CASE WHEN estado = 'INHABILITADO' THEN 1 ELSE 0 END) as inhabilitados,
-                SUM(CASE WHEN estado = 'OCUPADO' THEN 1 ELSE 0 END) as ocupados
-            FROM Chofer
-            WHERE estado IS NOT NULL
-        `);
-        
-        const data = rows[0] || { total: 0, habilitados: 0, inhabilitados: 0, ocupados: 0 };
-        
-        return {
-            total: data.total || 0,
-            habilitados: data.habilitados || 0,
-            inhabilitados: data.inhabilitados || 0,
-            ocupados: data.ocupados || 0
-        };
-    } catch (error) {
-        console.warn('Error en obtenerChoferesPorEstado:', error.message);
-        return {
-            total: 0,
-            habilitados: 0,
-            inhabilitados: 0,
-            ocupados: 0
-        };
+  try {
+    const choferes = await driverService.obtenerChoferes();
+
+    let habilitados = 0;
+    let inhabilitados = 0;
+    let ocupados = 0;
+
+    for (const c of choferes) {
+      const { estadoDisponibilidad } =
+        await driverService.calcularEstadoChofer(c.idChofer);
+
+      switch (estadoDisponibilidad) {
+        case 'HABILITADO':
+          habilitados++;
+          break;
+        case 'INHABILITADO':
+          inhabilitados++;
+          break;
+        case 'OCUPADO':
+          ocupados++;
+          break;
+      }
     }
+
+    return {
+      total: choferes.length,
+      habilitados,
+      inhabilitados,
+      ocupados,
+    };
+
+  } catch (error) {
+    console.warn('Error en obtenerChoferesPorEstado:', error.message);
+    return {
+      total: 0,
+      habilitados: 0,
+      inhabilitados: 0,
+      ocupados: 0,
+    };
+  }
 };
+
+
 
 // 4. Viajes en curso
 const obtenerViajesEnCurso = async () => {
     try {
-        const [result] = await db.query(`
-            SELECT COUNT(*) as total FROM Viaje 
-            WHERE estado = 'INICIADO' OR estado LIKE '%CURSO%' OR estado LIKE '%PROCESO%'
+        const [rows] = await db.query(`
+            SELECT fechaInicio, fechaFin, estado
+            FROM Viaje
+            WHERE estado IS NOT NULL
+              AND estado != 'CANCELADO'
         `);
-        return result[0]?.total || 0;
+
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+
+        let enCurso = 0;
+
+        for (const v of rows) {
+            const inicio = new Date(v.fechaInicio);
+            const fin = new Date(v.fechaFin);
+
+            inicio.setHours(0,0,0,0);
+            fin.setHours(0,0,0,0);
+
+            if (inicio <= hoy && fin >= hoy) {
+                enCurso++;
+            }
+        }
+
+        return enCurso;
     } catch (error) {
         console.warn('Error en obtenerViajesEnCurso:', error.message);
         return 0;
@@ -247,51 +292,98 @@ const obtenerMantenimientosInfo = async () => {
 
 // 6. Alertas del sistema
 const obtenerAlertas = async () => {
-    try {
-        let licenciasVencidas = 0;
-        let documentacionVehiculosPorVencer = 0;
-        
-        // A. Choferes con licencia VENCIDA
-        try {
-            const [licencias] = await db.query(`
-                SELECT COUNT(*) as total FROM Documentacion 
-                WHERE tipoDocumento = 'LICENCIA'
-                    AND fechaVencimiento < CURDATE()
-                    AND activa = true
-            `);
-            licenciasVencidas = licencias[0]?.total || 0;
-        } catch (error) {
-            console.warn('Error verificando licencias vencidas:', error.message);
-        }
-        
-        // B. Documentacion de vehiculos por vencer (proximos 30 dias)
-        try {
-            const [documentos] = await db.query(`
-                SELECT COUNT(DISTINCT d.idVehiculo) as total 
-                FROM Documentacion d
-                INNER JOIN Vehiculo v ON d.idVehiculo = v.idVehiculo
-                WHERE d.tipoDocumento IN ('VTV', 'SEGURO', 'CERTIFICADO')
-                    AND d.activa = true
-                    AND d.fechaVencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
-                    AND v.estado = 'HABILITADO'
-            `);
-            documentacionVehiculosPorVencer = documentos[0]?.total || 0;
-        } catch (error) {
-            console.warn('Error verificando documentacion por vencer:', error.message);
-        }
-        
-        return {
-            licenciasVencidas,
-            documentacionVehiculosPorVencer
-        };
-    } catch (error) {
-        console.warn('Error en obtenerAlertas:', error.message);
-        return {
-            licenciasVencidas: 0,
-            documentacionVehiculosPorVencer: 0
-        };
-    }
+  try {
+    const DIAS_AVISO = 30;
+
+    // ======================
+    // CHOFERES
+    // ======================
+
+    // 1️⃣ Licencias vencidas (carnet o apto físico)
+    const [choferVencidas] = await db.query(`
+      SELECT COUNT(DISTINCT idChofer) AS total
+      FROM Documentacion
+      WHERE idChofer IS NOT NULL
+        AND (
+          LOWER(nombre) LIKE '%carnet%'
+          OR LOWER(nombre) LIKE '%apto%'
+          OR LOWER(nombre) LIKE '%Examen%'
+        )
+        AND fechaVencimiento < CURDATE()
+    `);
+
+    // 2️⃣ Licencias por vencer
+    const [choferPorVencer] = await db.query(`
+      SELECT COUNT(DISTINCT idChofer) AS total
+      FROM Documentacion
+      WHERE idChofer IS NOT NULL
+        AND (
+          LOWER(nombre) LIKE '%carnet%'
+          OR LOWER(nombre) LIKE '%apto%'
+          OR LOWER(nombre) LIKE '%Examen%'
+        )
+        AND fechaVencimiento BETWEEN CURDATE()
+        AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
+    `, [DIAS_AVISO]);
+
+    // ======================
+    // VEHÍCULOS
+    // ======================
+
+    // 3️⃣ Documentación vencida
+    const [vehiculosVencida] = await db.query(`
+      SELECT COUNT(DISTINCT idVehiculo) AS total
+      FROM Documentacion
+      WHERE idVehiculo IS NOT NULL
+        AND (
+          LOWER(nombre) LIKE '%vtv%'
+          OR LOWER(nombre) LIKE '%seguro%'
+          OR LOWER(nombre) LIKE '%certificado%'
+        )
+        AND fechaVencimiento < CURDATE()
+    `);
+
+    // 4️⃣ Documentación por vencer
+    const [vehiculosPorVencer] = await db.query(`
+      SELECT COUNT(DISTINCT idVehiculo) AS total
+      FROM Documentacion
+      WHERE idVehiculo IS NOT NULL
+        AND (
+          LOWER(nombre) LIKE '%vtv%'
+          OR LOWER(nombre) LIKE '%seguro%'
+          OR LOWER(nombre) LIKE '%certificado%'
+        )
+        AND fechaVencimiento BETWEEN CURDATE()
+        AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
+    `, [DIAS_AVISO]);
+
+    return {
+      choferes: {
+        licenciasVencidas: choferVencidas[0]?.total || 0,
+        licenciasPorVencer: choferPorVencer[0]?.total || 0
+      },
+      vehiculos: {
+        documentacionVencida: vehiculosVencida[0]?.total || 0,
+        documentacionPorVencer: vehiculosPorVencer[0]?.total || 0
+      }
+    };
+
+  } catch (error) {
+    console.warn('Error en obtenerAlertas:', error.message);
+    return {
+      choferes: {
+        licenciasVencidas: 0,
+        licenciasPorVencer: 0
+      },
+      vehiculos: {
+        documentacionVencida: 0,
+        documentacionPorVencer: 0
+      }
+    };
+  }
 };
+
+
 
 module.exports = {
     obtenerDatosDashboard
