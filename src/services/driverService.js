@@ -576,7 +576,7 @@ module.exports = {
   eliminarChofer,
   obtenerChoferes,
   obtenerPorId,
-
+  calcularEstadoChofer,
   obtenerChoferesFiltrados,
   verificarDocumentacion,
   consultarHistorial,

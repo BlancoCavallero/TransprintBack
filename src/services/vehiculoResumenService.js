@@ -19,8 +19,7 @@ const obtenerVehiculosConMantenimientos = async () => {
         placa: v.patente,
         marca: v.marca,
         modelo: v.modelo,
-        // ⚠️ estado no viene del service de vehículos
-        // si más adelante querés, acá se puede calcular
+
         mantenimientos: mantenimientos.map((m) => ({
           id: m.idMantenimiento,
           fechaInicio: m.fechaInicio,
@@ -38,9 +37,7 @@ const obtenerVehiculosConMantenimientos = async () => {
   };
 };
 
-/**
- * Obtiene los mantenimientos de un vehículo puntual
- */
+
 const obtenerMantenimientosPorVehiculo = async (idVehiculo) => {
   const mantenimientos = await mantenimientoService.obtenerMantenimientos({
     idVehiculo,
