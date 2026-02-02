@@ -415,7 +415,7 @@ const obtenerPorId = async (idChofer) => {
 
 };
 
-/*const obtenerChoferesCompleto = async () => {
+/*const obtenerChoferesCompleto = async () => { //no se utiliza
   const [rows] = await db.query(`
     SELECT DISTINCT
       c.idChofer,
@@ -482,7 +482,6 @@ const obtenerChoferesFiltrados = async (valor) => {
     WHERE
       LOWER(CONVERT(p.nombre USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
       OR LOWER(CONVERT(p.apellido USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
-      OR LOWER(CONVERT(c.estadoDisponibilidad USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
       ${esNumero ? "OR c.dni = ?" : ""}
   `,
     esNumero ? [valor, valor, valor, valor] : [valor, valor, valor]
@@ -490,7 +489,6 @@ const obtenerChoferesFiltrados = async (valor) => {
   const mapped = rows.map((r) => ({
     idChofer: r.idChofer,
     dni: r.dni,
-    estadoDisponibilidad: r.estadoDisponibilidad, //va?
     idPersona: r.idPersona,
     persona: {
       idPersona: r.idPersona,
@@ -569,30 +567,36 @@ const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un
 
   const choferes = await obtenerChoferes();
   const resultado = [];
-
+  
   for (const chofer of choferes) {
-    const { estadoDisponibilidad, motivos } =
-      await calcularEstadoChofer(chofer.idChofer);
+
+  let estado;
+  let motivos;
+
+  if (chofer.activo === 0) {
+    estado = "DE_BAJA";
+    motivos = ["Chofer dado de baja"];
+  } else {
+    const calculado = await calcularEstadoChofer(chofer.idChofer);
+    estado = calculado.estadoDisponibilidad;
+    motivos = calculado.motivos;
+  }
+
 
     // Si hay filtro y no coincide → salteo
     if (
       estadoFiltro &&
       estadoDisponibilidad.toLowerCase() !== estadoFiltro.toLowerCase()
-    ) {
-      continue;
-    }
+    ) continue;
+    
 
     resultado.push({
       ...chofer,
-      estadoDisponibilidad,
+      estadoDisponibilidad: estado,
       motivos,
     });
   }
-
-  return resultado;
-};
-
-
+}
 
 // --- Asignar vehiculo a chofer (DEPRECADO - Ya no se usa) ---
 // Esta función ya no es necesaria ya que los viajes manejan la asignación temporal
