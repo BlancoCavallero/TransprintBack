@@ -320,4 +320,5 @@ module.exports = {
   actualizar,
   eliminarVehiculo,
   consultarDisponibilidad,
+  calcularEstadoVehiculo, 
 };
