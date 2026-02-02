@@ -169,7 +169,7 @@ const registrarChofer = async (data) => {
   }
 
   const [result] = await db.query(
-    "INSERT INTO Chofer (dni, idPersona) VALUES (?, ?)", //valor de estadoDisponibilidad, no se setea, se calcula dinamicamente
+    "INSERT INTO Chofer (dni, idPersona) VALUES (?, ?)",
     [dni, idPersonaFinal]
   );
 
@@ -189,7 +189,6 @@ const modificarChofer = async (idChofer, data) => {
     cuit,
     telefono,
     activo,
-    estadoDisponibilidad, // QUEDÓ EN DESUSO
   } = data;
 
   //Verifico que el chofer exista y esté activo
@@ -225,10 +224,6 @@ const modificarChofer = async (idChofer, data) => {
   // Actualizar datos del Chofer
   const datosChoferActualizar = {};
   if (dni !== undefined) datosChoferActualizar.dni = dni;
-  //estado de disponibilidad no puede modificarse manualmente
- /* if (estadoDisponibilidad !== undefined)
-    datosChoferActualizar.estadoDisponibilidad = estadoDisponibilidad;
-*/
   if (Object.keys(datosChoferActualizar).length > 0) {
     const setClause = Object.keys(datosChoferActualizar)
       .map((key) => `${key} = ?`)
@@ -424,7 +419,6 @@ const obtenerPorId = async (idChofer) => {
   const [rows] = await db.query(`
     SELECT DISTINCT
       c.idChofer,
-      c.estadoDisponibilidad,
       p.idPersona,
       p.nombre,
       p.apellido,
@@ -441,7 +435,7 @@ const obtenerPorId = async (idChofer) => {
 // --- Obtener un chofer por nombre---
 const obtenerPorNombre = async (nombre) => {
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+    SELECT c.idChofer, c.dni,
            p.nombre, p.apellido, p.cuit, p.telefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -452,7 +446,7 @@ const obtenerPorNombre = async (nombre) => {
 // --- Obtener un chofer por apellido---
 const obtenerPorApellido = async (apellido) => {
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+    SELECT c.idChofer, c.dni,
            p.nombre, p.apellido, p.cuit, p.telefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -460,21 +454,11 @@ const obtenerPorApellido = async (apellido) => {
   `, [apellido]);
   return rows;
 };
-// --- Obtener un chofer por estado de disponibilidad---
-const obtenerPorEstado = async (estado) => {
-  const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
-           p.nombre, p.apellido, p.cuit, p.telefono
-    FROM Chofer c
-    JOIN Persona p ON c.idPersona = p.idPersona
-    WHERE LOWER(c.estadoDisponibilidad) = LOWER(?)
-  `, [estado]);
-  return rows;
-};
+
 // --- Obtener un chofer por DNI ---
 const obtenerPorDni = async (dni) => {
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+    SELECT c.idChofer, c.dni,
            p.nombre, p.apellido, p.cuit, p.telefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -491,7 +475,7 @@ const obtenerChoferesFiltrados = async (valor) => {
 
   const [rows] = await db.query(
     `
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad, c.idPersona,
+    SELECT c.idChofer, c.dni, c.idPersona,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -506,7 +490,7 @@ const obtenerChoferesFiltrados = async (valor) => {
   const mapped = rows.map((r) => ({
     idChofer: r.idChofer,
     dni: r.dni,
-    estadoDisponibilidad: r.estadoDisponibilidad,
+    estadoDisponibilidad: r.estadoDisponibilidad, //va?
     idPersona: r.idPersona,
     persona: {
       idPersona: r.idPersona,
@@ -563,7 +547,7 @@ const calcularEstadoChofer = async (idChofer) => {
 
   
   
-  if (viajeStatus.activo) {
+  if (viajeStatus.enViaje) {
     estado = "OCUPADO";
     motivos.push(...viajeStatus.motivos);
   } else if (docStatus.cumpleRequisitos) {
