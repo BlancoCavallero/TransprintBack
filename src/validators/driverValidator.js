@@ -63,6 +63,19 @@ const validarChoferActualizacion = [
   .custom(() => {
     throw new Error("El estadoDisponibilidad no puede modificarse manualmente")
   }),
+  
+  body("idPersona")
+  .optional()
+  .custom(() => {
+    throw new Error("No está permitido modificar el idPersona")
+  }),
+  
+  body("activo")
+  .optional()
+  .custom(() => {
+    throw new Error("No está permitido modificar el campo activo manualmente")
+  }),
+
 
   // Campos de Persona opcionales
   body("nombre")
