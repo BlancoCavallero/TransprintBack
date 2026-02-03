@@ -586,7 +586,7 @@ const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un
     // Si hay filtro y no coincide → salteo
     if (
       estadoFiltro &&
-      estadoDisponibilidad.toLowerCase() !== estadoFiltro.toLowerCase()
+      estado.toLowerCase() !== estadoFiltro.toLowerCase()
     ) continue;
     
 
@@ -596,6 +596,8 @@ const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un
       motivos,
     });
   }
+
+  return resultado;
 }
 
 // --- Asignar vehiculo a chofer (DEPRECADO - Ya no se usa) ---
