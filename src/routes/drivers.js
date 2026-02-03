@@ -32,7 +32,8 @@ router.put(
   validarResultado,
   driverController.modificarChofer
 );
-router.delete("/:id", driverController.eliminarChofer);
+//router.delete("/:id", driverController.eliminarChofer);
+router.put("/:id/:accion", driverController.bajaChofer);
 
 router.get("/:id/historial", driverController.consultarHistorial); // probar en postman
 

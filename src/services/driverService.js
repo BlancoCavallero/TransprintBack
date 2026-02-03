@@ -95,7 +95,7 @@ const verificarViajeActivo = async (idChofer) => {
   );
 
   if (viajes.length === 0) {
-    return { activo: false };
+    return { enViaje: false };
   }
 
   const viajeActivo = viajes.some((v) => {
@@ -105,7 +105,7 @@ const verificarViajeActivo = async (idChofer) => {
   });
 
   return {
-    activo: viajeActivo,
+    enViaje: viajeActivo,
     motivos: viajeActivo ? ["El chofer está en viaje"] : [],
   };
 };
@@ -169,27 +169,17 @@ const registrarChofer = async (data) => {
   }
 
   const [result] = await db.query(
-    "INSERT INTO Chofer (dni, estadoDisponibilidad, idPersona) VALUES (?, 'Inhabilitado', ?)",
+    "INSERT INTO Chofer (dni, idPersona) VALUES (?, ?)",
     [dni, idPersonaFinal]
   );
 
   const idChofer = result.insertId;
 
-  /*// Verificar documentación real del chofer
-  const estadoDoc = await verificarDocumentacion(data.idChofer);
-  const nuevoEstado = estadoDoc ? "Libre" : "Inhabilitado";
-
-  // actualizo su disponibilidad real
-  await db.query(
-    "UPDATE Chofer SET estadoDisponibilidad = ? WHERE idChofer = ?",
-    [nuevoEstado, idChofer]
-  );*/
-
   // Return enriched chofer object
   return await obtenerPorId(idChofer);
 };
 
-// --- Modificar chofer ---
+// --- Solo se permite modificar choferes activos (activo = 1) ---
 const modificarChofer = async (idChofer, data) => {
   const {
     dni,
@@ -198,16 +188,26 @@ const modificarChofer = async (idChofer, data) => {
     apellido,
     cuit,
     telefono,
-    estadoDisponibilidad,
+    activo,
   } = data;
 
-  //Verifico que el chofer exista
+  //Verifico que el chofer exista y esté activo
   const [choferExistente] = await db.query(
-    "SELECT * FROM Chofer WHERE idChofer = ?",
+    "SELECT * FROM Chofer WHERE activo = 1 AND idChofer = ?",
     [idChofer]
   );
+
   if (choferExistente.length === 0) {
-    throw new Error("El chofer no existe");
+    throw new Error("El chofer no existe o está dado de baja");
+  }
+
+  // No se permite modificar el idPersona para no romper la relacion
+  if (idPersona !== undefined ) {
+    throw new Error("No está permitido cambiar la persona asociada al chofer");
+  }
+  //No se permite modificar el campo activo que referencia a la baja del chofer
+  if (activo !== undefined ) {
+    throw new Error("No está permitido modificar el campo activo");
   }
 
   // Validar DNI si se proporciona
@@ -224,9 +224,6 @@ const modificarChofer = async (idChofer, data) => {
   // Actualizar datos del Chofer
   const datosChoferActualizar = {};
   if (dni !== undefined) datosChoferActualizar.dni = dni;
-  if (estadoDisponibilidad !== undefined)
-    datosChoferActualizar.estadoDisponibilidad = estadoDisponibilidad;
-
   if (Object.keys(datosChoferActualizar).length > 0) {
     const setClause = Object.keys(datosChoferActualizar)
       .map((key) => `${key} = ?`)
@@ -279,20 +276,20 @@ const modificarChofer = async (idChofer, data) => {
   }
 
   // return enriched chofer
-  return await obtenerPorId(idChofer);
+  return await obtenerPorId(idChofer); // ojo aca puede no ser necesaria la funcion ya que trae el estadoDisponibilidad calculado dinamicamente.
 };
 
-// --- Eliminar chofer ---
-const eliminarChofer = async (idChofer) => {
-  const { activo: estaEnViaje } = await verificarViajeActivo(idChofer);
-  console.log(estaEnViaje);
+// --- Dar de baja un chofer ---
+const bajaChofer = async (idChofer, accion) => {
+  const { enViaje: estaEnViaje } = await verificarViajeActivo(idChofer);
+  //console.log(estaEnViaje);
 
   //si el chofer esta en viaje no permite eliminarlo
   if (estaEnViaje) {
     throw new Error("El chofer se encuentra en viaje y no puede eliminarse");
   }
 
-  // Buscar si tiene un vehículo asignado
+  /* Buscar si tiene un vehículo asignado
   const [[relacion]] = await db.query(
     `SELECT idVehiculo FROM ChoferXVehiculo WHERE idChofer = ?`,
     [idChofer]
@@ -309,18 +306,31 @@ const eliminarChofer = async (idChofer) => {
     await db.query("DELETE FROM ChoferXVehiculo WHERE idChofer = ?", [
       idChofer,
     ]);
-  }
+  }*/
   // Inhabilitar chofer
+  if (!["baja", "reactivar"].includes(accion)) {
+        throw new Error("Acción invalida, ingrese 'baja' o 'reactivar' ");
+  }
+
+  if(accion === "baja") {
   await db.query(
-    "UPDATE Chofer SET estadoDisponibilidad = 'Inhabilitado' WHERE idChofer = ?", // es incoherente ya que si lo dejo como inhabilitado, cuando consulto su estadoDisponibilidad se calcula devuelta y me traeria la respuesta desde esa funcion
+    "UPDATE Chofer SET activo = 0 WHERE idChofer = ?",
     [idChofer]
   );
+  } else if (accion === "reactivar") {
+  await db.query(
+    "UPDATE Chofer SET activo = 1 WHERE idChofer = ?",
+    [idChofer]
+  );
+} 
+return await obtenerPorId(idChofer);
+
 };
 
 // --- Obtener todos los choferes ---
 const obtenerChoferes = async () => {
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.idPersona,
+    SELECT c.idChofer, c.dni, c.activo, c.idPersona,
        p.nombre AS personaNombre,
        p.apellido AS personaApellido,
        p.cuit AS personaCuit,
@@ -332,6 +342,8 @@ const obtenerChoferes = async () => {
   const mapped = rows.map((r) => ({
     idChofer: r.idChofer,
     dni: r.dni,
+    activo: r.activo,
+    activo: r.activo,
     idPersona: r.idPersona,
     persona: r.idPersona
       ? {
@@ -351,7 +363,7 @@ const obtenerChoferes = async () => {
 const obtenerPorId = async (idChofer) => {
   const [[r]] = await db.query(
     `
-    SELECT c.idChofer, c.dni, c.idPersona,
+    SELECT c.idChofer, c.dni, c.activo, c.activo, c.idPersona,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -359,10 +371,12 @@ const obtenerPorId = async (idChofer) => {
   `,
     [idChofer]
   );
-  if (!r) return null;
-  return {
+
+  const base = {
     idChofer: r.idChofer,
     dni: r.dni,
+    activo: r.activo,
+    activo: r.activo,
     idPersona: r.idPersona,
     persona: r.idPersona
       ? {
@@ -372,18 +386,41 @@ const obtenerPorId = async (idChofer) => {
           cuit: r.personaCuit,
           telefono: r.personaTelefono,
         }
-      : null,
+      
+      : null
+  }
+
+  if (!r) {
+    throw new Error("Chofer no encontrado");
+  }
+
+  // 🔴 Caso DE_BAJA
+  if (r.activo === 0) {
+    return {
+      ...base,
+      estadoDisponibilidad: "DE_BAJA",
+      motivos: ["Chofer dado de baja"],
+    };
+  }
+
+  // 🟢 Caso activo → calcular estado normal
+  const estado = await calcularEstadoChofer(r.idChofer);
+
+  return {
+    ...base,
+    estadoDisponibilidad: estado.estadoDisponibilidad,
+    motivos: estado.motivos,
   };
+
 // ⚠️ estadoDisponibilidad NO se obtiene de BD
 // Se calcula siempre dinámicamente
 
 };
 
-const obtenerChoferesCompleto = async () => {
+/*const obtenerChoferesCompleto = async () => { //no se utiliza
   const [rows] = await db.query(`
     SELECT DISTINCT
       c.idChofer,
-      c.estadoDisponibilidad,
       p.idPersona,
       p.nombre,
       p.apellido,
@@ -396,11 +433,12 @@ const obtenerChoferesCompleto = async () => {
   return rows;
 };
 
-/*
+
+
 // --- Obtener un chofer por nombre---
 const obtenerPorNombre = async (nombre) => {
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+    SELECT c.idChofer, c.dni,
            p.nombre, p.apellido, p.cuit, p.telefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -411,7 +449,7 @@ const obtenerPorNombre = async (nombre) => {
 // --- Obtener un chofer por apellido---
 const obtenerPorApellido = async (apellido) => {
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+    SELECT c.idChofer, c.dni,
            p.nombre, p.apellido, p.cuit, p.telefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -419,21 +457,11 @@ const obtenerPorApellido = async (apellido) => {
   `, [apellido]);
   return rows;
 };
-// --- Obtener un chofer por estado de disponibilidad---
-const obtenerPorEstado = async (estado) => {
-  const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
-           p.nombre, p.apellido, p.cuit, p.telefono
-    FROM Chofer c
-    JOIN Persona p ON c.idPersona = p.idPersona
-    WHERE LOWER(c.estadoDisponibilidad) = LOWER(?)
-  `, [estado]);
-  return rows;
-};
+
 // --- Obtener un chofer por DNI ---
 const obtenerPorDni = async (dni) => {
   const [rows] = await db.query(`
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad,
+    SELECT c.idChofer, c.dni,
            p.nombre, p.apellido, p.cuit, p.telefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
@@ -450,14 +478,13 @@ const obtenerChoferesFiltrados = async (valor) => {
 
   const [rows] = await db.query(
     `
-    SELECT c.idChofer, c.dni, c.estadoDisponibilidad, c.idPersona,
+    SELECT c.idChofer, c.dni, c.idPersona,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono
     FROM Chofer c
     JOIN Persona p ON c.idPersona = p.idPersona
     WHERE
       LOWER(CONVERT(p.nombre USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
       OR LOWER(CONVERT(p.apellido USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
-      OR LOWER(CONVERT(c.estadoDisponibilidad USING utf8mb4)) COLLATE utf8mb4_general_ci LIKE CONCAT('%', LOWER(CONVERT(? USING utf8mb4)), '%')
       ${esNumero ? "OR c.dni = ?" : ""}
   `,
     esNumero ? [valor, valor, valor, valor] : [valor, valor, valor]
@@ -465,7 +492,6 @@ const obtenerChoferesFiltrados = async (valor) => {
   const mapped = rows.map((r) => ({
     idChofer: r.idChofer,
     dni: r.dni,
-    estadoDisponibilidad: r.estadoDisponibilidad,
     idPersona: r.idPersona,
     persona: {
       idPersona: r.idPersona,
@@ -512,13 +538,17 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
 };
 
 const calcularEstadoChofer = async (idChofer) => {
+
+
   const docStatus = await verificarDocumentacion(idChofer);
   const viajeStatus = await verificarViajeActivo(idChofer);
 
   let estado;
   const motivos = [];
 
-  if (viajeStatus.activo) {
+  
+  
+  if (viajeStatus.enViaje) {
     estado = "OCUPADO";
     motivos.push(...viajeStatus.motivos);
   } else if (docStatus.cumpleRequisitos) {
@@ -535,34 +565,43 @@ const calcularEstadoChofer = async (idChofer) => {
   };
 };
 
-
 // --- Consultar disponibilidad ---
 const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un estado
 
   const choferes = await obtenerChoferes();
   const resultado = [];
-
+  
   for (const chofer of choferes) {
-    const { estadoDisponibilidad, motivos } =
-      await calcularEstadoChofer(chofer.idChofer);
+
+  let estado;
+  let motivos;
+
+  if (chofer.activo === 0) {
+    estado = "DE_BAJA";
+    motivos = ["Chofer dado de baja"];
+  } else {
+    const calculado = await calcularEstadoChofer(chofer.idChofer);
+    estado = calculado.estadoDisponibilidad;
+    motivos = calculado.motivos;
+  }
+
 
     // Si hay filtro y no coincide → salteo
     if (
       estadoFiltro &&
-      estadoDisponibilidad.toLowerCase() !== estadoFiltro.toLowerCase()
-    ) {
-      continue;
-    }
+      estado.toLowerCase() !== estadoFiltro.toLowerCase()
+    ) continue;
+    
 
     resultado.push({
       ...chofer,
-      estadoDisponibilidad,
+      estadoDisponibilidad: estado,
       motivos,
     });
   }
 
   return resultado;
-};
+}
 
 // --- Asignar vehiculo a chofer (DEPRECADO - Ya no se usa) ---
 // Esta función ya no es necesaria ya que los viajes manejan la asignación temporal
@@ -573,7 +612,8 @@ const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un
 module.exports = {
   registrarChofer,
   modificarChofer,
-  eliminarChofer,
+  bajaChofer,
+  bajaChofer,
   obtenerChoferes,
   obtenerPorId,
   calcularEstadoChofer,

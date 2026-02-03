@@ -20,10 +20,18 @@ const modificarChofer = async (req, res, next) => {
   }
 };
 
-const eliminarChofer = async (req, res, next) => {
+const bajaChofer = async (req, res, next) => {
+
   try {
-    await driverService.eliminarChofer(req.params.id);
-    successResponse(res, null, "Chofer eliminado correctamente");
+    const { id, accion } = req.params;
+    await driverService.bajaChofer(id, accion);
+
+    const mensaje =
+      accion === "baja"
+        ? "Chofer dado de baja correctamente"
+        : "Chofer reactivado correctamente";
+
+      successResponse(res, null, mensaje);
   } catch (error) {
     next(error);
   }
@@ -45,8 +53,21 @@ const obtenerChoferes = async (req, res, next) => {
 
 const obtenerChoferId = async (req, res, next) => {
   try {
-    const chofer = await driverService.obtenerPorId(req.params.id);
+    const { id } = req.params;
+    
+    const chofer = await driverService.obtenerPorId(id);
     if (!chofer) return errorResponse(res, "Chofer no encontrado", 404);
+    
+    // ⬇️ cálculo dinámico del estado
+    if (chofer.activo === 0) {
+      chofer.estadoDisponibilidad = "DE_BAJA";
+      chofer.motivos = ["Chofer dado de baja"];
+    } else {
+      const estado = await driverService.calcularEstadoChofer(chofer.idChofer);
+      chofer.estadoDisponibilidad = estado.estadoDisponibilidad;
+      chofer.motivos = estado.motivos;
+    }
+    
     successResponse(res, chofer);
   } catch (error) {
     next(error);
@@ -142,7 +163,7 @@ const obtenerResumenViaticos = async (req, res) => {
 module.exports = {
   registrarChofer,
   modificarChofer,
-  eliminarChofer,
+  bajaChofer,
   obtenerChoferes,
   obtenerChoferId,
   obtenerChoferesFiltradosController,

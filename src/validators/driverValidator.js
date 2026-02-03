@@ -42,6 +42,13 @@ const validarChofer = [
     .withMessage("El DNI es obligatorio")
     .isInt({ min: 1000000, max: 99999999 })
     .withMessage("El DNI debe ser un número válido de hasta 8 dígitos"),
+
+  body("estadoDisponibilidad")
+  .optional()
+  .custom(() => {
+    throw new Error("El estadoDisponibilidad no puede registrarse manualmente")
+  }),
+
 ];
 
 const validarChoferActualizacion = [
@@ -52,11 +59,23 @@ const validarChoferActualizacion = [
     .withMessage("El DNI debe ser un número válido de hasta 8 dígitos"),
 
   body("estadoDisponibilidad")
-    .optional()
-    .isIn(["Libre", "Ocupado", "Inhabilitado"])
-    .withMessage(
-      "El estadoDisponibilidad debe ser 'Libre', 'Ocupado' o 'Inhabilitado'"
-    ),
+  .optional()
+  .custom(() => {
+    throw new Error("El estadoDisponibilidad no puede modificarse manualmente")
+  }),
+  
+  body("idPersona")
+  .optional()
+  .custom(() => {
+    throw new Error("No está permitido modificar el idPersona")
+  }),
+  
+  body("activo")
+  .optional()
+  .custom(() => {
+    throw new Error("No está permitido modificar el campo activo manualmente")
+  }),
+
 
   // Campos de Persona opcionales
   body("nombre")
