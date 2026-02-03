@@ -128,7 +128,6 @@
         if (v.activo === 0) continue;
         
         total++;
-
         const { estadoDisponibilidad } =
             await vehiculoService.calcularEstadoVehiculo(v.idVehiculo);
 

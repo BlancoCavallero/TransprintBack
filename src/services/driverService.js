@@ -307,7 +307,7 @@ const bajaChofer = async (idChofer, accion) => {
       idChofer,
     ]);
   }*/
-  // Inhabilitar chofer
+  // Inactivar chofer
   if (!["baja", "reactivar"].includes(accion)) {
         throw new Error("Acción invalida, ingrese 'baja' o 'reactivar' ");
   }
@@ -612,7 +612,6 @@ const consultarDisponibilidad = async (estadoFiltro) => { //aca no se le pasa un
 module.exports = {
   registrarChofer,
   modificarChofer,
-  bajaChofer,
   bajaChofer,
   obtenerChoferes,
   obtenerPorId,
