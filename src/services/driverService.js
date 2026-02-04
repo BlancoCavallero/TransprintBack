@@ -309,7 +309,7 @@ const bajaChofer = async (idChofer, accion) => {
   }*/
   // Inactivar chofer
   if (!["baja", "reactivar"].includes(accion)) {
-        throw new Error("Acción invalida, ingrese 'baja' o 'reactivar' ");
+        throw new Error("Acción invalida, ingrese 'baja' o 'reactivar'");
   }
 
   if(accion === "baja") {
@@ -343,7 +343,6 @@ const obtenerChoferes = async () => {
     idChofer: r.idChofer,
     dni: r.dni,
     activo: r.activo,
-    activo: r.activo,
     idPersona: r.idPersona,
     persona: r.idPersona
       ? {
@@ -375,7 +374,6 @@ const obtenerPorId = async (idChofer) => {
   const base = {
     idChofer: r.idChofer,
     dni: r.dni,
-    activo: r.activo,
     activo: r.activo,
     idPersona: r.idPersona,
     persona: r.idPersona
@@ -504,7 +502,7 @@ const obtenerChoferesFiltrados = async (valor) => {
   return mapped;
 };
 
-// --- Consultar historial de viajes ---
+/*// --- Consultar historial de viajes ---
 const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
   let query = `
     SELECT 
@@ -535,7 +533,7 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
 
   const [rows] = await db.query(query, params);
   return rows;
-};
+};*/ //no se usa pero funcionaba para ChoferXVehiculo
 
 const calcularEstadoChofer = async (idChofer) => {
 
@@ -618,6 +616,6 @@ module.exports = {
   calcularEstadoChofer,
   obtenerChoferesFiltrados,
   verificarDocumentacion,
-  consultarHistorial,
+  //consultarHistorial,
   consultarDisponibilidad,
 };

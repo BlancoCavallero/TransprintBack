@@ -65,13 +65,30 @@ const actualizarCliente = async (req, res, next) => {
   }
 };
 
-const eliminarCliente = async (req, res, next) => {
+/*const eliminarCliente = async (req, res, next) => {
   try {
     const cliente = await clientService.obtenerPorId(req.params.id);
     if (!cliente) return errorResponse(res, "Cliente no encontrado", 404);
 
     await clientService.eliminarCliente(req.params.id);
     successResponse(res, null, "Cliente eliminado correctamente");
+  } catch (error) {
+    next(error);
+  }
+};*/
+
+const bajaCliente = async (req, res, next) => {
+
+  try {
+    const { id, accion } = req.params;
+    await clientService.bajaCliente(id, accion);
+
+    const mensaje =
+      accion === "baja"
+        ? "Cliente dado de baja correctamente"
+        : "Cliente reactivado correctamente";
+
+      successResponse(res, null, mensaje);
   } catch (error) {
     next(error);
   }
@@ -83,5 +100,5 @@ module.exports = {
   obtenerClientePorId,
   obtenerClientesFiltradosController,
   actualizarCliente,
-  eliminarCliente,
+  bajaCliente,
 };

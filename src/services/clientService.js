@@ -1,8 +1,60 @@
 const db = require("../config/db");
 
+const normalizarFecha = (fecha) => {
+  if (fecha instanceof Date) {
+    fecha.setHours(0, 0, 0, 0);
+    return fecha;
+  }
+
+  // Si viene como YYYY-MM-DD
+  if (typeof fecha === "string" && fecha.includes("-")) {
+    const f = new Date(fecha);
+    f.setHours(0, 0, 0, 0);
+    return f;
+  }
+
+  // Si viene como DD/MM/YYYY
+  if (typeof fecha === "string" && fecha.includes("/")) {
+    const [d, m, y] = fecha.split("/");
+    return new Date(y, m - 1, d);
+  }
+
+  return null;
+};
+
+
+const verificarViajeActivo = async (idCliente) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const [viajes] = await db.query(
+    `
+    SELECT idViaje, fechaInicio, fechaFin
+    FROM Viaje
+    WHERE idCliente = ?
+    `,
+    [idCliente]
+  );
+
+  if (viajes.length === 0) {
+    return { enViaje: false };
+  }
+
+  const viajeActivo = viajes.some((v) => {
+    const inicio = normalizarFecha(v.fechaInicio);
+    const fin = normalizarFecha(v.fechaFin);
+    return inicio <= hoy && fin >= hoy;
+  });
+
+  return {
+    enViaje: viajeActivo,
+    motivos: viajeActivo ? ["El Cliente está asociado a un viaje en curso"] : [],
+  };
+};
+
 const obtenerTodos = async () => {
   const [rows] = await db.query(`
-    SELECT c.idCliente, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
+    SELECT c.idCliente, c.correo, c.observaciones, c.razonSocial, c.tipo, c.activo, c.idPersona, c.idLocalidad,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono,
            l.nombre AS localidadNombre, l.codPostal AS localidadCodPostal, l.idProvincia,
            pr.nombre AS provinciaNombre
@@ -19,6 +71,7 @@ const obtenerTodos = async () => {
     observaciones: r.observaciones,
     razonSocial: r.razonSocial,
     tipo: r.tipo,
+    activo: r.activo,
     idPersona: r.idPersona,
     idLocalidad: r.idLocalidad,
     persona: r.idPersona
@@ -47,7 +100,7 @@ const obtenerTodos = async () => {
 const obtenerPorId = async (id) => {
   const [rows] = await db.query(
     `
-    SELECT c.idCliente, c.correo, c.observaciones, c.razonSocial, c.tipo, c.idPersona, c.idLocalidad,
+    SELECT c.idCliente, c.correo, c.observaciones, c.razonSocial, c.tipo, c.activo, c.idPersona, c.idLocalidad,
            p.nombre AS personaNombre, p.apellido AS personaApellido, p.cuit AS personaCuit, p.telefono AS personaTelefono,
            l.nombre AS localidadNombre, l.codPostal AS localidadCodPostal, l.idProvincia,
            pr.nombre AS provinciaNombre
@@ -61,13 +114,17 @@ const obtenerPorId = async (id) => {
   );
 
   const r = rows[0];
-  if (!r) return null;
+  if (!r) {
+    throw new Error("Chofer no encontrado");
+  }
+
   return {
     idCliente: r.idCliente,
     correo: r.correo,
     observaciones: r.observaciones,
     razonSocial: r.razonSocial,
     tipo: r.tipo,
+    activo: r.activo,
     idPersona: r.idPersona,
     idLocalidad: r.idLocalidad,
     persona: r.idPersona
@@ -89,6 +146,7 @@ const obtenerPorId = async (id) => {
         }
       : null,
   };
+  
 };
 
 // --- Obtener clientes por tipo, nombre, razon social o CUIT ---
@@ -320,8 +378,35 @@ const actualizarCliente = async (id, cliente) => {
   return await obtenerPorId(id);
 };
 
-const eliminarCliente = async (id) => {
-  return db.query("DELETE FROM Cliente WHERE idCliente = ?", [id]);
+// --- Dar de baja un Cliente ---
+const bajaCliente = async (idCliente, accion) => {
+  const { enViaje: estaEnViaje } = await verificarViajeActivo(idCliente);
+  //console.log(estaEnViaje);
+
+  //si el Cliente esta asociado a un viaje EN_CURSO no permite eliminarlo
+  if (estaEnViaje) {
+    throw new Error("El Cliente se encuentra en viaje y no puede eliminarse");
+  }
+
+  
+  // Inactivar Cliente
+  if (!["baja", "reactivar"].includes(accion)) {
+        throw new Error("Acción invalida, ingrese 'baja' o 'reactivar'");
+  }
+
+  if(accion === "baja") {
+  await db.query(
+    "UPDATE Cliente SET activo = 0 WHERE idCliente = ?",
+    [idCliente]
+  );
+  } else if (accion === "reactivar") {
+  await db.query(
+    "UPDATE Cliente SET activo = 1 WHERE idCliente = ?",
+    [idCliente]
+  );
+} 
+return await obtenerPorId(idCliente);
+
 };
 
 module.exports = {
@@ -331,5 +416,5 @@ module.exports = {
   obtenerPorCorreo,
   crearCliente,
   actualizarCliente,
-  eliminarCliente,
+  bajaCliente,
 };

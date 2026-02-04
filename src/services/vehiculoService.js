@@ -300,7 +300,7 @@ const bajaVehiculo = async (idVehiculo, accion) => {
  
   // Inactivar Vehiculo
   if (!["baja", "reactivar"].includes(accion)) {
-        throw new Error("Acción invalida, ingrese 'baja' o 'reactivar' ");
+        throw new Error("Acción invalida, ingrese 'baja' o 'reactivar'");
   }
 
   if(accion === "baja") {

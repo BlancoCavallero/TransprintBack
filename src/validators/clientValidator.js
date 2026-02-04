@@ -75,6 +75,12 @@ const validarClienteActualizacion = [
     .optional()
     .isIn(["Productor", "Empresa"])
     .withMessage("El tipo de cliente debe ser 'Productor' o 'Empresa'"),
+      
+  body("idPersona")
+  .optional()
+  .custom(() => {
+    throw new Error("No está permitido modificar el idPersona")
+  }),
 
   body("idLocalidad")
     .optional()
