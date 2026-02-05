@@ -297,11 +297,11 @@ const actualizarCliente = async (id, cliente) => {
 
   //Verifico que el cliente exista
   const [clienteExistente] = await db.query(
-    "SELECT * FROM Cliente WHERE idCliente = ?",
+    "SELECT * FROM Cliente WHERE activo = 1 AND idCliente = ?",
     [id]
   );
   if (clienteExistente.length === 0) {
-    throw new Error("El cliente no existe");
+    throw new Error("El cliente no existe o está dado de baja");
   }
 
   // Obtener idPersona actual del cliente
