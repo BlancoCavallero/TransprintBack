@@ -66,6 +66,7 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Cliente` (
   `idCliente` INT NOT NULL AUTO_INCREMENT,
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
   `correo` VARCHAR(45) NULL,
   `observaciones` VARCHAR(45) NULL,
   `razonSocial` VARCHAR(45) NULL,
@@ -95,7 +96,8 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `mydb`.`Chofer` (
   `idChofer` INT NOT NULL AUTO_INCREMENT,
   `dni` INT NULL,
-  `estadoDisponibilidad` ENUM('Libre','Ocupado','Inhabilitado') NOT NULL,
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
+  -- `estadoDisponibilidad` ENUM('Libre','Ocupado','Inhabilitado') NOT NULL,
   `idPersona` INT NOT NULL,
   PRIMARY KEY (`idChofer`),
   UNIQUE INDEX `idChofer_UNIQUE` (`idChofer` ASC) VISIBLE,
@@ -113,6 +115,7 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mydb`.`Vehiculo` (
   `idVehiculo` INT NOT NULL AUTO_INCREMENT,
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
   `anio` INT NULL,
   `estado` VARCHAR(45) NULL,
   `marca` VARCHAR(45) NULL,
