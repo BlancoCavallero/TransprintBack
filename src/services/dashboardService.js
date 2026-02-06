@@ -116,12 +116,18 @@
     try {
         const vehiculos = await vehiculoService.obtenerVehiculos();
 
+        let total = 0;
         let habilitados = 0;
         let inhabilitados = 0;
         let ocupados = 0;
         let enMantenimiento = 0;
 
         for (const v of vehiculos) {
+
+        // 🔴 NO contar vehiculos dados de baja
+        if (v.activo === 0) continue;
+        
+        total++;
         const { estadoDisponibilidad } =
             await vehiculoService.calcularEstadoVehiculo(v.idVehiculo);
 
@@ -142,7 +148,7 @@
         }
 
         return {
-        total: vehiculos.length,
+        total,
         habilitados,
         inhabilitados,
         ocupados,
@@ -166,11 +172,20 @@
     try {
         const choferes = await driverService.obtenerChoferes();
 
+        let total = 0;
         let habilitados = 0;
         let inhabilitados = 0;
         let ocupados = 0;
 
+
+
         for (const c of choferes) {
+        
+        // 🔴 NO contar choferes dados de baja
+        if (c.activo === 0) continue;
+        
+        total++;
+
         const { estadoDisponibilidad } =
             await driverService.calcularEstadoChofer(c.idChofer);
 
@@ -188,7 +203,7 @@
         }
 
         return {
-        total: choferes.length,
+        total,
         habilitados,
         inhabilitados,
         ocupados,
@@ -203,7 +218,7 @@
         ocupados: 0,
         };
     }
-    };
+};
 
     // 4. Viajes en curso
     const obtenerViajesEnCurso = async () => {
@@ -298,10 +313,12 @@
         const [choferVencidas] = await db.query(`
         SELECT COUNT(DISTINCT ultima.idChofer) AS total
         FROM (
-            SELECT idChofer, nombre, MAX(fechaVencimiento) AS fechaVencimiento
-            FROM Documentacion
-            WHERE tipoEntidad = 'CHOFER'
-            GROUP BY idChofer, nombre
+            SELECT d.idChofer, d.nombre, MAX(d.fechaVencimiento) AS fechaVencimiento
+            FROM Documentacion d
+            JOIN Chofer c ON c.idChofer = d.idChofer
+            WHERE d.tipoEntidad = 'CHOFER'
+                AND c.activo = 1
+            GROUP BY d.idChofer, d.nombre
         ) ultima
         WHERE ultima.fechaVencimiento < CURDATE()
         `);
@@ -310,12 +327,16 @@
         const [choferPorVencer] = await db.query(`
         SELECT COUNT(DISTINCT ultima.idChofer) AS total
         FROM (
-            SELECT idChofer, nombre, MAX(fechaVencimiento) AS fechaVencimiento
-            FROM Documentacion
-            WHERE tipoEntidad = 'CHOFER'
-            GROUP BY idChofer, nombre
+            SELECT d.idChofer, d.nombre, MAX(d.fechaVencimiento) AS fechaVencimiento
+            FROM Documentacion d
+            JOIN Chofer c ON c.idChofer = d.idChofer
+            WHERE d.tipoEntidad = 'CHOFER'
+                AND c.activo = 1
+            GROUP BY d.idChofer, d.nombre
         ) ultima
-        WHERE ultima.fechaVencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
+        WHERE ultima.fechaVencimiento 
+        BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
+
         `, [DIAS_AVISO]);
 
         // ======================

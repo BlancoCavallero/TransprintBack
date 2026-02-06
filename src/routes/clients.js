@@ -26,6 +26,8 @@ router.put(
   validarResultado,
   clientController.actualizarCliente
 ); // Actualizar
-router.delete("/:id", clientController.eliminarCliente); // Eliminar
+
+//router.delete("/:id", clientController.eliminarCliente); // Eliminar
+router.put("/:id/:accion", clientController.bajaCliente);
 
 module.exports = router;
