@@ -116,7 +116,7 @@ const calcularEstado = (fechaInicio, fechaFin, estadoActual) => {
     return "FINALIZADO";
   }
 
-  return "INICIADO"; // Por defecto
+  return "PROGRAMADO"; // Por defecto
 };
 
 // ============================================================
