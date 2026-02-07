@@ -103,7 +103,7 @@ const calcularEstado = (fechaInicio, fechaFin, estadoActual) => {
 
   // Si hoy < fechaInicio → INICIADO
   if (hoy < inicio) {
-    return "INICIADO";
+    return "PROGRAMADO";
   }
 
   // Si hoy >= fechaInicio AND hoy <= fechaFin → EN CURSO
