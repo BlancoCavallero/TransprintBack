@@ -89,7 +89,7 @@ const verificarViajeActivo = async (idVehiculo) => {
 
   
   if (viajes.length === 0) {
-    return { activo: false };
+    return { enViaje: false };
   }
 
   const viajeActivo = viajes.some((v) => {
@@ -99,7 +99,7 @@ const verificarViajeActivo = async (idVehiculo) => {
   });
 
   return {
-    activo: viajeActivo,
+    enViaje: viajeActivo,
     motivos: viajeActivo ? ["El vehículo está asignado a un viaje"] : [],
   };
 };
@@ -134,10 +134,17 @@ const verificarMantenimientoActivo = async (idVehiculo) => {
   };
 };
 
+// no funciona por id?
 const obtenerVehiculos = async (filtros = {}) => {
+  // Si filtros es un número o string (un ID suelto), lo convertimos en objeto
+  if (typeof filtros !== 'object') {
+    filtros = { idVehiculo: filtros };
+  }
+
   let query = `
               SELECT 
                 idVehiculo, 
+                activo,
                 anio,
                 marca,
                 modelo,
@@ -198,26 +205,35 @@ const crear = async (vehiculo) => {
   }
 
   const [result] = await db.query(
-    "INSERT INTO Vehiculo (anio, estado, marca, modelo, patente, tipo) VALUES (?, 'Inhabilitado', ?, ?, ?, ?)",
+    "INSERT INTO Vehiculo (anio, marca, modelo, patente, tipo) VALUES (?, ?, ?, ?, ?)",
     [anio, marca, modelo, patente, tipo]
   );
   return { idVehiculo: result.insertId, ...vehiculo };
 };
 
 const actualizar = async (id, vehiculo) => {
+  
+  const { anio, marca, modelo, patente, tipo, activo } = vehiculo;
+  
   // Verificar existencia
-  const [check] = await db.query(
-    "SELECT * FROM Vehiculo WHERE idVehiculo = ?",
+  const [vehiculoExistente] = await db.query(
+    "SELECT * FROM Vehiculo WHERE activo = 1 AND idVehiculo = ?",
     [id]
   );
-  if (check.length === 0) {
-    const error = new Error("Vehículo no encontrado");
+  if (vehiculoExistente.length === 0) {
+    const error = new Error("El vehículo no existe o está dado de baja");
     error.statusCode = 404;
     throw error;
   }
 
-  const { anio, estado, marca, modelo, patente, tipo } = vehiculo;
-  const [result] = await db.query(
+  
+  
+  //No se permite modificar el campo activo que referencia a la baja del vehiculo
+  if (activo !== undefined ) {
+    throw new Error("No está permitido modificar el campo activo");
+  }
+  
+  /*const [result] = await db.query(
     "UPDATE Vehiculo SET anio = ?, estado = ?, marca = ?, modelo = ?, patente = ?, tipo = ? WHERE idVehiculo = ?",
     [
       anio !== undefined ? anio : check[0].anio,
@@ -228,18 +244,36 @@ const actualizar = async (id, vehiculo) => {
       tipo || check[0].tipo,
       id,
     ]
-  );
+  );*/
+  // Actualizar datos del Vehiculo
+  
+  const datosVehiculoActualizar = {};
+  if (anio !== undefined) datosVehiculoActualizar.anio = anio;
+  if (marca !== undefined) datosVehiculoActualizar.marca = marca;
+  if (modelo !== undefined) datosVehiculoActualizar.modelo = modelo;
+  if (patente !== undefined) datosVehiculoActualizar.patente = patente;
+  if (tipo !== undefined) datosVehiculoActualizar.tipo = tipo;
+  
+  if (Object.keys(datosVehiculoActualizar).length > 0) {
+    const setClause = Object.keys(datosVehiculoActualizar)
+      .map((key) => `${key} = ?`)
+      .join(", ");
+    const values = Object.values(datosVehiculoActualizar);
+    values.push(id);
 
-  if (result.affectedRows === 0) {
+    await db.query(`UPDATE Vehiculo SET ${setClause} WHERE idVehiculo = ?`, values);
+  }
+
+  /*if (result.affectedRows === 0) {
     const error = new Error("No se pudo actualizar el vehículo");
     error.statusCode = 500;
     throw error;
-  }
+  }*/
 
   return { idVehiculo: id, ...vehiculo };
 };
 
-const eliminarVehiculo = async (id) => {
+/*const eliminarVehiculo = async (id) => {
   const [result] = await db.query("DELETE FROM Vehiculo WHERE idVehiculo = ?", [
     id,
   ]);
@@ -251,6 +285,37 @@ const eliminarVehiculo = async (id) => {
   }
 
   return { message: "Vehículo eliminado correctamente" };
+};*/
+
+// --- Dar de baja un Vehiculo ---
+const bajaVehiculo = async (idVehiculo, accion) => {
+  const { enViaje: estaEnViaje } = await verificarViajeActivo(idVehiculo);
+  //console.log(estaEnViaje);
+
+  //si el Vehiculo esta en viaje no permite eliminarlo
+  if (estaEnViaje) {
+    throw new Error("El Vehiculo se encuentra en viaje y no puede eliminarse");
+  }
+
+ 
+  // Inactivar Vehiculo
+  if (!["baja", "reactivar"].includes(accion)) {
+        throw new Error("Acción invalida, ingrese 'baja' o 'reactivar'");
+  }
+
+  if(accion === "baja") {
+  await db.query(
+    "UPDATE Vehiculo SET activo = 0 WHERE idVehiculo = ?",
+    [idVehiculo]
+  );
+  } else if (accion === "reactivar") {
+  await db.query(
+    "UPDATE Vehiculo SET activo = 1 WHERE idVehiculo = ?",
+    [idVehiculo]
+  );
+} 
+return await obtenerVehiculos(idVehiculo);
+
 };
 
 const calcularEstadoVehiculo = async (idVehiculo) => {
@@ -266,7 +331,7 @@ const calcularEstadoVehiculo = async (idVehiculo) => {
     estado = "EN_MANTENIMIENTO";
     motivos.push(...mantenimientoStatus.motivos);
 
-  } else if (viajeStatus.activo) {
+  } else if (viajeStatus.enViaje) {
     estado = "OCUPADO";
     motivos.push(...viajeStatus.motivos);
 
@@ -287,26 +352,35 @@ const calcularEstadoVehiculo = async (idVehiculo) => {
 
 
 // --- Consultar disponibilidad ---
-const consultarDisponibilidad = async (estadoFiltro) => { 
+const consultarDisponibilidad = async (estadoFiltro) => {
 
   const vehiculos = await obtenerVehiculos();
   const resultado = [];
 
   for (const vehiculo of vehiculos) {
-    const { estadoDisponibilidad, motivos } =
-      await calcularEstadoVehiculo(vehiculo.idVehiculo);
+    let estado;
+    let motivos;
+
+    if (vehiculo.activo === 0) {
+      estado = "DE_BAJA";
+      motivos = ["Vehiculo dado de baja"];
+    } else {
+      const calculado = await calcularEstadoVehiculo(vehiculo.idVehiculo);
+      estado = calculado.estadoDisponibilidad;
+      motivos = calculado.motivos;
+    }
 
     // Si hay filtro y no coincide → salteo
     if (
       estadoFiltro &&
-      estadoDisponibilidad.toLowerCase() !== estadoFiltro.toLowerCase()
+      estado.toLowerCase() !== estadoFiltro.toLowerCase()
     ) {
       continue;
     }
 
     resultado.push({
       ...vehiculo,
-      estadoDisponibilidad,
+      estadoDisponibilidad: estado,
       motivos,
     });
   }
@@ -318,7 +392,8 @@ module.exports = {
   obtenerVehiculos,
   crear,
   actualizar,
-  eliminarVehiculo,
+  //eliminarVehiculo,
+  bajaVehiculo,
   consultarDisponibilidad,
   calcularEstadoVehiculo, 
 };
