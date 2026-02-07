@@ -32,6 +32,25 @@ ADD COLUMN `fechaFin` DATE NOT NULL DEFAULT CURDATE() AFTER `fechaInicio`;
 ALTER TABLE `Viaje`
 MODIFY COLUMN `estado` ENUM('INICIADO','EN CURSO','FINALIZADO','CANCELADO') NOT NULL DEFAULT 'INICIADO';
 
+-- Corregir FK de Viaje a Chofer y Vehiculo (no a ChoferXVehiculo) IMPORTANTISIMO ESTO PORQUE A MI SE ME ROMPIO TODO 2/2/2026.
+ALTER TABLE `Viaje`
+DROP FOREIGN KEY `fk_Viaje_Chofer1`;
+
+ALTER TABLE `Viaje`
+DROP FOREIGN KEY `fk_Viaje_Vehiculo1`;
+
+ALTER TABLE `Viaje`
+ADD CONSTRAINT `fk_Viaje_Chofer1`
+  FOREIGN KEY (`idChofer`)
+  REFERENCES `mydb`.`Chofer` (`idChofer`)
+  ON DELETE NO ACTION
+  ON UPDATE NO ACTION,
+ADD CONSTRAINT `fk_Viaje_Vehiculo1`
+  FOREIGN KEY (`idVehiculo`)
+  REFERENCES `mydb`.`Vehiculo` (`idVehiculo`)
+  ON DELETE NO ACTION
+  ON UPDATE NO ACTION;
+
 -- 4. Cambiar restricción de Gasto a ON DELETE CASCADE si está como NO ACTION
 ALTER TABLE `Gasto`
 DROP FOREIGN KEY `fk_Gasto_Viaje1`,
