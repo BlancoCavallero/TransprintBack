@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Chofer` (
   `idChofer` INT NOT NULL AUTO_INCREMENT,
   `dni` INT NULL,
   `activo` TINYINT(1) NOT NULL DEFAULT 1,
-  -- `estadoDisponibilidad` ENUM('Libre','Ocupado','Inhabilitado') NOT NULL,
+  `estadoDisponibilidad` ENUM('Libre','Ocupado','Inhabilitado') NOT NULL,
   `idPersona` INT NOT NULL,
   PRIMARY KEY (`idChofer`),
   UNIQUE INDEX `idChofer_UNIQUE` (`idChofer` ASC) VISIBLE,
