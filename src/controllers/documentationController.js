@@ -24,10 +24,11 @@ const crear = async (req, res, next) => {
   try {
     // Clonamos el body en data
     const data = { ...req.body };
-
+    
     if (req.file) {
-      data.detalle = `/uploads/${req.file.filename}`; // Si hay archivo, guardamos su ruta
+      data.detalle = `/uploads/${req.file.filename}`;
     }
+
     const created = await documentationService.crear(data);
     successResponse(res, created, "Documentación cargada exitosamente");
   } catch (error) {
@@ -45,15 +46,20 @@ const actualizar = async (req, res, next) => {
 
     // Clonamos los datos nuevos del body
     const data = { ...req.body };
+    
     // Si vino un archivo, actualizamos el campo 'detalle'
     if (req.file) {
       data.detalle = `/uploads/${req.file.filename}`;
     }
 
     const result = await documentationService.actualizar(id, data);
+    
     successResponse(res, result, "Documentación actualizada correctamente");
   } catch (error) {
     console.error("Error al actualizar documentación:", error);
+    if (req.file) {
+      eliminarArchivo(`/uploads/${req.file.filename}`);
+    }
     next(error);
   }
 };

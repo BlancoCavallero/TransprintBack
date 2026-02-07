@@ -2,6 +2,7 @@ const db = require("../config/db");
 const {
   DOCUMENTO_TIPO_ENTIDAD,
 } = require("../validators/documentationValidator");
+const { eliminarArchivo } = require("../utils/file");
 
 const normalizarFecha = (fecha) => {
   if (!fecha) return null;
@@ -206,6 +207,10 @@ const crear = async (data) => {
     tipoEntidad,
   } = data;
 
+  if (!detalle) {
+  throw new Error("La documentación debe tener un archivo adjunto");
+}
+
   // Determinar tipoEntidad
   let tipoEntidadFinal = determinarTipoEntidad(nombre, tipoEntidad);
   if (!tipoEntidadFinal) {
@@ -301,6 +306,11 @@ const actualizar = async (id, data) => {
     throw new Error("Documentación no encontrada");
   }
 
+    // 👉 Si viene un archivo nuevo, borrar el anterior
+  if (data.detalle && data.detalle !== existente.detalle) {
+    eliminarArchivo(existente.detalle);
+  }
+
   // Usar valores proporcionados o mantener los existentes
   const detalleActual = detalle !== undefined ? detalle : existente.detalle;
   const nombreActual = nombre !== undefined ? nombre : existente.nombre;
@@ -377,6 +387,23 @@ const actualizar = async (id, data) => {
 
 // Eliminar documentación
 const eliminar = async (id) => {
+  
+  const existente = await obtenerPorId(id);
+  if (!existente) {
+    throw new Error("Documentación no encontrada");
+  }
+
+  const archivoAnterior = existente.detalle;
+  const archivoNuevo = data.detalle;
+
+  // 👉 Si viene archivo nuevo, borrar el anterior
+  if (archivoNuevo && archivoNuevo !== archivoAnterior) {
+    eliminarArchivo(archivoAnterior);
+  }
+
+    // Borrar archivo físico
+  eliminarArchivo(existente.detalle);
+  //Borrar documentacion de la db
   await db.query("DELETE FROM Documentacion WHERE idDocumentacion = ?", [id]);
   return { mensaje: "Documentación eliminada correctamente" };
 };
