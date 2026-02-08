@@ -250,7 +250,6 @@ El módulo incluye logs detallados:
 ```javascript
 🔵 [BACKEND] obtenerReporteGanancias - INICIO
 📥 [BACKEND] Parámetros recibidos: { mes: 1, anio: 2026 }
-📊 [BACKEND] Query SQL: ...
 📊 [BACKEND] Params: [ 2026, 1 ]
 🔍 [BACKEND-DEBUG] Viajes con fechaFin < HOY
 📊 [BACKEND-DEBUG] Total viajes FINALIZADOS (por fecha): 1
