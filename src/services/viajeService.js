@@ -131,7 +131,10 @@ const obtenerViajes = async (filtros = {}) => {
            ch.idChofer AS choferId, ch.dni AS choferDni, ch.idPersona AS choferIdPersona,
            per.nombre AS choferPersonaNombre, per.apellido AS choferPersonaApellido, per.cuit AS choferPersonaCuit,
            
-           ve.idVehiculo AS vehiculoId, ve.patente AS vehiculoPatente, ve.marca AS vehiculoMarca, ve.modelo AS vehiculoModelo, ve.tipo AS vehiculoTipo
+           ve.idVehiculo AS vehiculoId, ve.patente AS vehiculoPatente, ve.marca AS vehiculoMarca, ve.modelo AS vehiculoModelo, ve.tipo AS vehiculoTipo,
+           
+           lo.idLocalidad AS localidadOrigenId, lo.nombre AS localidadOrigenNombre, lo.codPostal AS localidadOrigenCodPostal,
+           ld.idLocalidad AS localidadDestinoId, ld.nombre AS localidadDestinoNombre, ld.codPostal AS localidadDestinoCodPostal
            
     FROM Viaje v
     LEFT JOIN Cliente c ON v.idCliente = c.idCliente
@@ -139,6 +142,8 @@ const obtenerViajes = async (filtros = {}) => {
     LEFT JOIN Chofer ch ON v.idChofer = ch.idChofer
     LEFT JOIN Persona per ON ch.idPersona = per.idPersona
     LEFT JOIN Vehiculo ve ON v.idVehiculo = ve.idVehiculo
+    LEFT JOIN Localidad lo ON v.idLocalidadOrigen = lo.idLocalidad
+    LEFT JOIN Localidad ld ON v.idLocalidadDestino = ld.idLocalidad
     
     WHERE 1=1
   `;
@@ -228,6 +233,24 @@ const obtenerViajes = async (filtros = {}) => {
             patente: r.vehiculoPatente,
             marca: r.vehiculoMarca,
             modelo: r.vehiculoModelo,
+          }
+        : null,
+
+      // Estructura Localidad Origen
+      localidadOrigen: r.localidadOrigenId
+        ? {
+            idLocalidad: r.localidadOrigenId,
+            nombre: r.localidadOrigenNombre,
+            codPostal: r.localidadOrigenCodPostal,
+          }
+        : null,
+
+      // Estructura Localidad Destino
+      localidadDestino: r.localidadDestinoId
+        ? {
+            idLocalidad: r.localidadDestinoId,
+            nombre: r.localidadDestinoNombre,
+            codPostal: r.localidadDestinoCodPostal,
           }
         : null,
 
