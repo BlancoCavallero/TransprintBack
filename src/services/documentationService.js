@@ -355,7 +355,10 @@ const actualizar = async (id, data) => {
 
   // Solo actualizar los campos que realmente cambiaron
   const actualizaciones = {};
-  if (detalle !== undefined) actualizaciones.detalle = detalleActual;
+  // Solo actualizar detalle si viene con un valor válido (archivo nuevo)
+  if (detalle !== undefined && detalle !== null && detalle !== '') {
+    actualizaciones.detalle = detalleActual;
+  }
   if (nombre !== undefined) actualizaciones.nombre = nombreActual;
   if (renovacion !== undefined) actualizaciones.renovacion = renovacionActual;
   if (fechaVencimiento !== undefined)
@@ -387,26 +390,23 @@ const actualizar = async (id, data) => {
 
 // Eliminar documentación
 const eliminar = async (id) => {
-  
   const existente = await obtenerPorId(id);
   if (!existente) {
     throw new Error("Documentación no encontrada");
   }
 
-  const archivoAnterior = existente.detalle;
-  const archivoNuevo = data.detalle;
-
-  // 👉 Si viene archivo nuevo, borrar el anterior
-  if (archivoNuevo && archivoNuevo !== archivoAnterior) {
-    eliminarArchivo(archivoAnterior);
-  }
-
-    // Borrar archivo físico
+  // 🧹 Borrar archivo físico
   eliminarArchivo(existente.detalle);
-  //Borrar documentacion de la db
-  await db.query("DELETE FROM Documentacion WHERE idDocumentacion = ?", [id]);
+
+  // 🗑️ Borrar registro de la DB
+  await db.query(
+    "DELETE FROM Documentacion WHERE idDocumentacion = ?",
+    [id]
+  );
+
   return { mensaje: "Documentación eliminada correctamente" };
 };
+
 
 module.exports = {
   obtenerTodas,
