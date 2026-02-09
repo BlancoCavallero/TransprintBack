@@ -257,7 +257,7 @@ const actualizar = async (id, vehiculo) => {
 
   const { anio, estado, marca, modelo, patente } = vehiculo;
 
-  await db.query(
+  const [result] = await db.query(
     `UPDATE Vehiculo 
      SET anio = ?, estado = ?, marca = ?, modelo = ?, patente = ?, tipo = ?
      WHERE idVehiculo = ?`,
@@ -277,9 +277,10 @@ const actualizar = async (id, vehiculo) => {
     error.statusCode = 500;
     throw error;
   }
-  
+
   return { idVehiculo: id, ...vehiculo, tipo: tipoFinal };
 };
+
 
 
 const eliminarVehiculo = async (id) => {
