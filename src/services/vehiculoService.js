@@ -98,7 +98,7 @@ const verificarViajeActivo = async (idVehiculo) => {
 
   
   if (viajes.length === 0) {
-    return { activo: false };
+    return { enViaje: false };
   }
 
   const viajeActivo = viajes.some((v) => {
@@ -108,7 +108,7 @@ const verificarViajeActivo = async (idVehiculo) => {
   });
 
   return {
-    activo: viajeActivo,
+    enViaje: viajeActivo,
     motivos: viajeActivo ? ["El vehículo está asignado a un viaje"] : [],
   };
 };
@@ -143,10 +143,17 @@ const verificarMantenimientoActivo = async (idVehiculo) => {
   };
 };
 
+// no funciona por id?
 const obtenerVehiculos = async (filtros = {}) => {
+  // Si filtros es un número o string (un ID suelto), lo convertimos en objeto
+  if (typeof filtros !== 'object') {
+    filtros = { idVehiculo: filtros };
+  }
+
   let query = `
               SELECT 
                 idVehiculo, 
+                activo,
                 anio,
                 marca,
                 modelo,
@@ -270,13 +277,31 @@ const actualizar = async (id, vehiculo) => {
       tipoFinal,
       id,
     ]
-  );
+  );*/
+  // Actualizar datos del Vehiculo
+  
+  const datosVehiculoActualizar = {};
+  if (anio !== undefined) datosVehiculoActualizar.anio = anio;
+  if (marca !== undefined) datosVehiculoActualizar.marca = marca;
+  if (modelo !== undefined) datosVehiculoActualizar.modelo = modelo;
+  if (patente !== undefined) datosVehiculoActualizar.patente = patente;
+  if (tipo !== undefined) datosVehiculoActualizar.tipo = tipo;
+  
+  if (Object.keys(datosVehiculoActualizar).length > 0) {
+    const setClause = Object.keys(datosVehiculoActualizar)
+      .map((key) => `${key} = ?`)
+      .join(", ");
+    const values = Object.values(datosVehiculoActualizar);
+    values.push(id);
 
-  if (result.affectedRows === 0) {
+    await db.query(`UPDATE Vehiculo SET ${setClause} WHERE idVehiculo = ?`, values);
+  }
+
+  /*if (result.affectedRows === 0) {
     const error = new Error("No se pudo actualizar el vehículo");
     error.statusCode = 500;
     throw error;
-  }
+  }*/
 
   return { idVehiculo: id, ...vehiculo, tipo: tipoFinal };
 };
@@ -295,6 +320,37 @@ const eliminarVehiculo = async (id) => {
   }
 
   return { message: "Vehículo eliminado correctamente" };
+};*/
+
+// --- Dar de baja un Vehiculo ---
+const bajaVehiculo = async (idVehiculo, accion) => {
+  const { enViaje: estaEnViaje } = await verificarViajeActivo(idVehiculo);
+  //console.log(estaEnViaje);
+
+  //si el Vehiculo esta en viaje no permite eliminarlo
+  if (estaEnViaje) {
+    throw new Error("El Vehiculo se encuentra en viaje y no puede eliminarse");
+  }
+
+ 
+  // Inactivar Vehiculo
+  if (!["baja", "reactivar"].includes(accion)) {
+        throw new Error("Acción invalida, ingrese 'baja' o 'reactivar'");
+  }
+
+  if(accion === "baja") {
+  await db.query(
+    "UPDATE Vehiculo SET activo = 0 WHERE idVehiculo = ?",
+    [idVehiculo]
+  );
+  } else if (accion === "reactivar") {
+  await db.query(
+    "UPDATE Vehiculo SET activo = 1 WHERE idVehiculo = ?",
+    [idVehiculo]
+  );
+} 
+return await obtenerVehiculos(idVehiculo);
+
 };
 
 const calcularEstadoVehiculo = async (idVehiculo) => {
@@ -310,7 +366,7 @@ const calcularEstadoVehiculo = async (idVehiculo) => {
     estado = "EN_MANTENIMIENTO";
     motivos.push(...mantenimientoStatus.motivos);
 
-  } else if (viajeStatus.activo) {
+  } else if (viajeStatus.enViaje) {
     estado = "OCUPADO";
     motivos.push(...viajeStatus.motivos);
 
@@ -331,26 +387,35 @@ const calcularEstadoVehiculo = async (idVehiculo) => {
 
 
 // --- Consultar disponibilidad ---
-const consultarDisponibilidad = async (estadoFiltro) => { 
+const consultarDisponibilidad = async (estadoFiltro) => {
 
   const vehiculos = await obtenerVehiculos();
   const resultado = [];
 
   for (const vehiculo of vehiculos) {
-    const { estadoDisponibilidad, motivos } =
-      await calcularEstadoVehiculo(vehiculo.idVehiculo);
+    let estado;
+    let motivos;
+
+    if (vehiculo.activo === 0) {
+      estado = "DE_BAJA";
+      motivos = ["Vehiculo dado de baja"];
+    } else {
+      const calculado = await calcularEstadoVehiculo(vehiculo.idVehiculo);
+      estado = calculado.estadoDisponibilidad;
+      motivos = calculado.motivos;
+    }
 
     // Si hay filtro y no coincide → salteo
     if (
       estadoFiltro &&
-      estadoDisponibilidad.toLowerCase() !== estadoFiltro.toLowerCase()
+      estado.toLowerCase() !== estadoFiltro.toLowerCase()
     ) {
       continue;
     }
 
     resultado.push({
       ...vehiculo,
-      estadoDisponibilidad,
+      estadoDisponibilidad: estado,
       motivos,
     });
   }
@@ -362,6 +427,8 @@ module.exports = {
   obtenerVehiculos,
   crear,
   actualizar,
-  eliminarVehiculo,
+  //eliminarVehiculo,
+  bajaVehiculo,
   consultarDisponibilidad,
+  calcularEstadoVehiculo, 
 };

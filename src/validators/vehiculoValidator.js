@@ -16,6 +16,11 @@ const validarCreacionVehiculo = [
     }),
   body("marca").notEmpty().withMessage("La marca es obligatoria"),
   body("modelo").notEmpty().withMessage("El modelo es obligatorio"),
+  body("estado")
+    .optional()
+    .custom(() => {
+      throw new Error("El estado no puede registrarse manualmente")
+    }),
   body("anio")
     .optional()
     .isInt({ min: 1900, max: new Date().getFullYear() })
@@ -40,9 +45,9 @@ const validarActualizacionVehiculo = [
   body("modelo").optional().isString(),
   body("estado")
     .optional()
-    .trim()
-    .toLowerCase()
-    .isIn(["activo", "inactivo", "mantenimiento"]).withMessage("El estado no es válido"),
+    .custom(() => {
+      throw new Error("El estado no puede modificarse manualmente")
+    }),
   body("anio")
     .optional()
     .isInt({ min: 1900, max: new Date().getFullYear() })

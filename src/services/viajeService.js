@@ -3,32 +3,85 @@ const db = require("../config/db");
 // ============================================================
 // Función para validar disponibilidad temporal de chofer y vehículo
 // ============================================================
-const validarDisponibilidadTemporal = async (idChofer, idVehiculo, fechaInicio, fechaFin, idViajeActual = null) => {
-  // Buscar viajes que se superponen en fechas (excluyendo el viaje actual si se está actualizando)
-  let query = `
-    SELECT idViaje FROM Viaje
-    WHERE (idChofer = ? OR idVehiculo = ?)
-    AND estado != 'CANCELADO'
-    AND NOT (fechaFin < ? OR fechaInicio > ?)
-  `;
-  const params = [idChofer, idVehiculo, fechaInicio, fechaFin];
+const validarDisponibilidadTemporal = async (
+  idChofer,
+  idVehiculo,
+  fechaInicio,
+  fechaFin,
+  idViajeActual = null
+) => {
+  const conflictos = {
+    chofer: false,
+    vehiculo: false,
+  };
 
-  // Si estamos actualizando un viaje, excluirlo de la validación
+  let extra = "";
+  const paramsBase = [fechaInicio, fechaFin];
+
   if (idViajeActual) {
-    query += " AND idViaje != ?";
-    params.push(idViajeActual);
+    extra = "AND idViaje != ?";
   }
 
-  const [conflictos] = await db.query(query, params);
-  
-  if (conflictos.length > 0) {
-    const error = new Error(
-      `El chofer o vehículo no está disponible en el rango de fechas seleccionado`
-    );
+  // 🔴 Chequear chofer
+  const [conflictosChofer] = await db.query(
+    `
+    SELECT idViaje
+    FROM Viaje
+    WHERE idChofer = ?
+      AND estado != 'CANCELADO'
+      AND NOT (fechaFin < ? OR fechaInicio > ?)
+      ${extra}
+    `,
+    idViajeActual
+      ? [idChofer, ...paramsBase, idViajeActual]
+      : [idChofer, ...paramsBase]
+  );
+
+  if (conflictosChofer.length > 0) {
+    conflictos.chofer = true;
+  }
+
+  // 🔴 Chequear vehículo
+  const [conflictosVehiculo] = await db.query(
+    `
+    SELECT idViaje
+    FROM Viaje
+    WHERE idVehiculo = ?
+      AND estado != 'CANCELADO'
+      AND NOT (fechaFin < ? OR fechaInicio > ?)
+      ${extra}
+    `,
+    idViajeActual
+      ? [idVehiculo, ...paramsBase, idViajeActual]
+      : [idVehiculo, ...paramsBase]
+  );
+
+  if (conflictosVehiculo.length > 0) {
+    conflictos.vehiculo = true;
+  }
+
+  // 🚨 Si hay conflictos, armar error claro
+  if (conflictos.chofer || conflictos.vehiculo) {
+    const motivos = [];
+
+    if (conflictos.chofer) {
+      motivos.push("El chofer no está disponible en el rango de fechas");
+    }
+    if (conflictos.vehiculo) {
+      motivos.push("El vehículo no está disponible en el rango de fechas");
+    }
+
+    const error = new Error("Conflicto de disponibilidad");
     error.statusCode = 400;
+    error.detalle = {
+      chofer: conflictos.chofer,
+      vehiculo: conflictos.vehiculo,
+      motivos,
+    };
     throw error;
   }
 };
+
 
 // ============================================================
 // Función auxiliar para calcular estado automáticamente
@@ -50,7 +103,7 @@ const calcularEstado = (fechaInicio, fechaFin, estadoActual) => {
 
   // Si hoy < fechaInicio → INICIADO
   if (hoy < inicio) {
-    return "INICIADO";
+    return "PROGRAMADO";
   }
 
   // Si hoy >= fechaInicio AND hoy <= fechaFin → EN CURSO
@@ -63,7 +116,7 @@ const calcularEstado = (fechaInicio, fechaFin, estadoActual) => {
     return "FINALIZADO";
   }
 
-  return "INICIADO"; // Por defecto
+  return "PROGRAMADO"; // Por defecto
 };
 
 // ============================================================
@@ -205,21 +258,21 @@ const crear = async (viaje) => {
 
   // Validar que chofer y vehículo existan
   const [choferCheck] = await db.query(
-    "SELECT idChofer FROM Chofer WHERE idChofer = ?",
+    "SELECT idChofer FROM Chofer WHERE activo = 1 AND idChofer = ?",
     [idChofer]
   );
   if (choferCheck.length === 0) {
-    const error = new Error("El chofer ingresado no existe");
+    const error = new Error("El chofer ingresado no existe o está dado de baja");
     error.statusCode = 404;
     throw error;
   }
 
   const [vehiculoCheck] = await db.query(
-    "SELECT idVehiculo FROM Vehiculo WHERE idVehiculo = ?",
+    "SELECT idVehiculo FROM Vehiculo WHERE activo = 1 AND idVehiculo = ?",
     [idVehiculo]
   );
   if (vehiculoCheck.length === 0) {
-    const error = new Error("El vehículo ingresado no existe");
+    const error = new Error("El vehículo ingresado no existe o está dado de baja");
     error.statusCode = 404;
     throw error;
   }
