@@ -207,7 +207,7 @@ const modificarGasto = async (id, gasto) => {
   const { detalle, monto, tipo, idViaje } = gasto;
 
   // Obtener el gasto actual
-  const existente = await obtenerGastosPorId(id);
+  const existente = await obtenerPorId(id);
   if (!existente) {
     throw new Error("Gasto no encontrado");
   }
@@ -231,7 +231,7 @@ const modificarGasto = async (id, gasto) => {
 
   // Si no hay campos a actualizar, simplemente devolver el gasto actual
   if (Object.keys(campos).length === 0) {
-    return await obtenerGastosPorId(id);
+    return await obtenerPorId(id);
   }
 
   // Construir la query dinámicamente
@@ -243,43 +243,10 @@ const modificarGasto = async (id, gasto) => {
 
   await db.query(`UPDATE Gasto SET ${setClauses} WHERE idGasto = ?`, valores);
 
-  const viajes = await viajeService.obtenerViajes({
-    idViaje: campos.idViaje || existente.idViaje,
-  });
-  const viajeCompleto = viajes[0] || null;
+  // Obtener el gasto actualizado completo
+  const gastoActualizado = await obtenerPorId(id);
 
-  // Mapear solo los campos necesarios para evitar referencias circulares
-  const viaje = viajeCompleto
-    ? {
-        idViaje: viajeCompleto.idViaje,
-        estado: viajeCompleto.estado,
-        fecha: viajeCompleto.fecha,
-        kilometros: viajeCompleto.kilometros,
-        observaciones: viajeCompleto.observaciones,
-        motivoCancelacion: viajeCompleto.motivoCancelacion,
-        precio: viajeCompleto.precio,
-        idLocalidadOrigen: viajeCompleto.idLocalidadOrigen,
-        idLocalidadDestino: viajeCompleto.idLocalidadDestino,
-        chofer: viajeCompleto.chofer
-          ? {
-              idChofer: viajeCompleto.chofer.idChofer,
-              dni: viajeCompleto.chofer.dni,
-              persona: viajeCompleto.chofer.persona,
-            }
-          : null,
-        vehiculo: viajeCompleto.vehiculo
-          ? {
-              idVehiculo: viajeCompleto.vehiculo.idVehiculo,
-              patente: viajeCompleto.vehiculo.patente,
-              marca: viajeCompleto.vehiculo.marca,
-              modelo: viajeCompleto.vehiculo.modelo,
-              tipo: viajeCompleto.vehiculo.tipo,
-            }
-          : null,
-      }
-    : null;
-
-  return { idGasto: id, detalle, monto, tipo, idViaje, viaje };
+  return gastoActualizado;
 };
 
 const eliminar = async (id) => {
