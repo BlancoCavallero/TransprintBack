@@ -272,6 +272,12 @@ const actualizar = async (id, vehiculo) => {
     ]
   );
 
+  if (result.affectedRows === 0) {
+    const error = new Error("No se pudo actualizar el vehículo");
+    error.statusCode = 500;
+    throw error;
+  }
+  
   return { idVehiculo: id, ...vehiculo, tipo: tipoFinal };
 };
 
