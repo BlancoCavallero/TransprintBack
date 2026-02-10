@@ -1,5 +1,14 @@
 const db = require("../config/db");
 
+const TIPOS_VEHICULO = [
+  "LIGERO",
+  "MEDIANO",
+  "PESADO",
+  "TERAPESADO",
+];
+
+const normalizarTipoVehiculo = (tipo) =>
+  tipo ? tipo.trim().toUpperCase() : null;
 
 const normalizarFecha = (fecha) => {
   if (fecha instanceof Date) {
@@ -185,19 +194,29 @@ const obtenerVehiculos = async (filtros = {}) => {
 const crear = async (vehiculo) => {
   const { anio, marca, modelo, patente, tipo } = vehiculo;
 
-  if (!patente || !marca || !modelo) {
+  if (!patente || !marca || !modelo || !tipo) {
     const error = new Error(
-      "Faltan campos obligatorios (patente, marca, modelo)"
+      "Faltan campos obligatorios (patente, marca, modelo, tipo)"
     );
     error.statusCode = 400;
     throw error;
   }
 
-  // Verificar duplicado por patente (si no lo hiciste en el validator)
+  const tipoNormalizado = normalizarTipoVehiculo(tipo);
+
+  if (!TIPOS_VEHICULO.includes(tipoNormalizado)) {
+    const error = new Error(
+      `Tipo de vehículo inválido. Valores permitidos: ${TIPOS_VEHICULO.join(", ")}`
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
   const [existe] = await db.query(
     "SELECT idVehiculo FROM Vehiculo WHERE patente = ?",
     [patente]
   );
+
   if (existe.length > 0) {
     const error = new Error("Ya existe un vehículo con esa patente");
     error.statusCode = 400;
@@ -205,43 +224,57 @@ const crear = async (vehiculo) => {
   }
 
   const [result] = await db.query(
-    "INSERT INTO Vehiculo (anio, marca, modelo, patente, tipo) VALUES (?, ?, ?, ?, ?)",
-    [anio, marca, modelo, patente, tipo]
+    `INSERT INTO Vehiculo 
+     (anio, estado, marca, modelo, patente, tipo) 
+     VALUES (?, 'Inhabilitado', ?, ?, ?, ?)`,
+    [anio, marca, modelo, patente, tipoNormalizado]
   );
-  return { idVehiculo: result.insertId, ...vehiculo };
+
+  return { idVehiculo: result.insertId, ...vehiculo, tipo: tipoNormalizado };
 };
 
+
 const actualizar = async (id, vehiculo) => {
-  
-  const { anio, marca, modelo, patente, tipo, activo } = vehiculo;
-  
-  // Verificar existencia
-  const [vehiculoExistente] = await db.query(
-    "SELECT * FROM Vehiculo WHERE activo = 1 AND idVehiculo = ?",
+  const [check] = await db.query(
+    "SELECT * FROM Vehiculo WHERE idVehiculo = ?",
     [id]
   );
-  if (vehiculoExistente.length === 0) {
-    const error = new Error("El vehículo no existe o está dado de baja");
+
+  if (check.length === 0) {
+    const error = new Error("Vehículo no encontrado");
     error.statusCode = 404;
     throw error;
   }
 
-  
-  
-  //No se permite modificar el campo activo que referencia a la baja del vehiculo
-  if (activo !== undefined ) {
-    throw new Error("No está permitido modificar el campo activo");
+  let tipoFinal = check[0].tipo;
+
+  if (vehiculo.tipo !== undefined) {
+    const tipoNormalizado = normalizarTipoVehiculo(vehiculo.tipo);
+
+    if (!TIPOS_VEHICULO.includes(tipoNormalizado)) {
+      const error = new Error(
+        `Tipo de vehículo inválido. Valores permitidos: ${TIPOS_VEHICULO.join(", ")}`
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    tipoFinal = tipoNormalizado;
   }
-  
-  /*const [result] = await db.query(
-    "UPDATE Vehiculo SET anio = ?, estado = ?, marca = ?, modelo = ?, patente = ?, tipo = ? WHERE idVehiculo = ?",
+
+  const { anio, estado, marca, modelo, patente } = vehiculo;
+
+  const [result] = await db.query(
+    `UPDATE Vehiculo 
+     SET anio = ?, estado = ?, marca = ?, modelo = ?, patente = ?, tipo = ?
+     WHERE idVehiculo = ?`,
     [
-      anio !== undefined ? anio : check[0].anio,
+      anio ?? check[0].anio,
       estado ? estado.toLowerCase() : check[0].estado,
       marca || check[0].marca,
       modelo || check[0].modelo,
       patente || check[0].patente,
-      tipo || check[0].tipo,
+      tipoFinal,
       id,
     ]
   );*/
@@ -270,10 +303,12 @@ const actualizar = async (id, vehiculo) => {
     throw error;
   }*/
 
-  return { idVehiculo: id, ...vehiculo };
+  return { idVehiculo: id, ...vehiculo, tipo: tipoFinal };
 };
 
-/*const eliminarVehiculo = async (id) => {
+
+
+const eliminarVehiculo = async (id) => {
   const [result] = await db.query("DELETE FROM Vehiculo WHERE idVehiculo = ?", [
     id,
   ]);
