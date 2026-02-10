@@ -9,14 +9,8 @@ const DOCUMENTO_TIPO_ENTIDAD = {
 };
 
 const validarDocumentacion = [
-  // detalle: la URL o ruta del archivo
-  body("detalle")
-    .notEmpty()
-    .withMessage("El detalle es obligatorio")
-    .isString()
-    .withMessage("El detalle debe ser texto")
-    .isLength({ max: 100 })
-    .withMessage("El detalle no puede superar los 100 caracteres"),
+  // detalle: ahora es un archivo, se valida con multer middleware
+  // No validamos 'detalle' aquí porque viene en req.file, no en req.body
 
   // nombre: nombre del tipo de documentación (Carnet, Seguro, etc.)
   body("nombre")
@@ -27,17 +21,15 @@ const validarDocumentacion = [
     .isLength({ max: 45 })
     .withMessage("El nombre no puede superar los 45 caracteres"),
 
-  // tipoEntidad: ENUM que define si pertenece a CHOFER o VEHICULO
+  // tipoEntidad: ENUM que define si pertenece a CHOFER o VEHICULO (opcional, se determina automáticamente)
   body("tipoEntidad")
-    .notEmpty()
-    .withMessage("El tipoEntidad es obligatorio")
+    .optional()
     .isIn(["CHOFER", "VEHICULO"])
     .withMessage("El tipoEntidad debe ser CHOFER o VEHICULO"),
 
-  // renovacion: cantidad de meses o años de vigencia
+  // renovacion: cantidad de meses o años de vigencia (opcional)
   body("renovacion")
-    .notEmpty()
-    .withMessage("El campo 'renovación' es obligatorio")
+    .optional({ checkFalsy: true })
     .isInt({ min: 1 })
     .withMessage("La renovación debe ser un número entero positivo"),
 
@@ -81,12 +73,8 @@ const validarDocumentacion = [
 
 const validarDocumentacionActualizacion = [
   // Todos los campos opcionales para actualización
-  body("detalle")
-    .optional()
-    .isString()
-    .withMessage("El detalle debe ser texto")
-    .isLength({ max: 100 })
-    .withMessage("El detalle no puede superar los 100 caracteres"),
+  // detalle: ahora es un archivo, se valida con multer middleware
+  // No validamos 'detalle' aquí porque viene en req.file cuando se actualiza
 
   body("nombre")
     .optional()

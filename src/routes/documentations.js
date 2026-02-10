@@ -12,16 +12,22 @@ router.get("/", documentationController.obtenerTodas);
 router.get("/:id", documentationController.obtenerPorId);
 router.post(
   "/",
+  (req, res, next) => {
+    console.log('=== ANTES DE MULTER (POST) ==>')
+    console.log('Content-Type:', req.headers['content-type']);
+    console.log('Body antes de multer:', req.body);
+    next();
+  },
+  upload.single("detalle"),
   validarDocumentacion,
   validarResultado,
-  upload.single("detalle"),
   documentationController.crear
 );
 router.put(
   "/:id",
+  upload.single("detalle"),
   validarDocumentacionActualizacion,
   validarResultado,
-  upload.single("detalle"),
   documentationController.actualizar
 );
 router.delete("/:id", documentationController.eliminar);

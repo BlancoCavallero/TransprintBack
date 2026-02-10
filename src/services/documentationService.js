@@ -2,6 +2,7 @@ const db = require("../config/db");
 const {
   DOCUMENTO_TIPO_ENTIDAD,
 } = require("../validators/documentationValidator");
+const { eliminarArchivo } = require("../utils/file");
 
 const normalizarFecha = (fecha) => {
   if (!fecha) return null;
@@ -206,6 +207,10 @@ const crear = async (data) => {
     tipoEntidad,
   } = data;
 
+  if (!detalle) {
+  throw new Error("La documentación debe tener un archivo adjunto");
+}
+
   // Determinar tipoEntidad
   let tipoEntidadFinal = determinarTipoEntidad(nombre, tipoEntidad);
   if (!tipoEntidadFinal) {
@@ -301,6 +306,11 @@ const actualizar = async (id, data) => {
     throw new Error("Documentación no encontrada");
   }
 
+    // 👉 Si viene un archivo nuevo, borrar el anterior
+  if (data.detalle && data.detalle !== existente.detalle) {
+    eliminarArchivo(existente.detalle);
+  }
+
   // Usar valores proporcionados o mantener los existentes
   const detalleActual = detalle !== undefined ? detalle : existente.detalle;
   const nombreActual = nombre !== undefined ? nombre : existente.nombre;
@@ -345,7 +355,10 @@ const actualizar = async (id, data) => {
 
   // Solo actualizar los campos que realmente cambiaron
   const actualizaciones = {};
-  if (detalle !== undefined) actualizaciones.detalle = detalleActual;
+  // Solo actualizar detalle si viene con un valor válido (archivo nuevo)
+  if (detalle !== undefined && detalle !== null && detalle !== '') {
+    actualizaciones.detalle = detalleActual;
+  }
   if (nombre !== undefined) actualizaciones.nombre = nombreActual;
   if (renovacion !== undefined) actualizaciones.renovacion = renovacionActual;
   if (fechaVencimiento !== undefined)
@@ -377,9 +390,23 @@ const actualizar = async (id, data) => {
 
 // Eliminar documentación
 const eliminar = async (id) => {
-  await db.query("DELETE FROM Documentacion WHERE idDocumentacion = ?", [id]);
+  const existente = await obtenerPorId(id);
+  if (!existente) {
+    throw new Error("Documentación no encontrada");
+  }
+
+  // 🧹 Borrar archivo físico
+  eliminarArchivo(existente.detalle);
+
+  // 🗑️ Borrar registro de la DB
+  await db.query(
+    "DELETE FROM Documentacion WHERE idDocumentacion = ?",
+    [id]
+  );
+
   return { mensaje: "Documentación eliminada correctamente" };
 };
+
 
 module.exports = {
   obtenerTodas,

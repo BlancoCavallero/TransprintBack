@@ -7,6 +7,7 @@ const userRoutes = require("./src/routes/users");
 const clientRoutes = require("./src/routes/clients");
 const personRoutes = require("./src/routes/persons");
 const documentationRoutes = require("./src/routes/documentations");
+const path = require("path");
 const dashboardRoutes = require("./src/routes/dashboardRoutes");
 const driverRoutes = require("./src/routes/drivers");
 const vehiculosRoutes = require("./src/routes/vehiculos");
@@ -15,6 +16,7 @@ const provinciaRoutes = require("./src/routes/provincias");
 const mantenimientoRoutes = require("./src/routes/mantenimientos");
 const viajesRoutes = require("./src/routes/viajes");
 const expenseRoutes = require("./src/routes/expenses");
+const reporteRoutes = require("./src/routes/reportes");
 // const choferVehiculosRoutes = require("./src/routes/choferVehiculos"); // DEPRECADO - Ya no se usa
 
 const errorHandler = require("./src/middlewares/errorHandler");
@@ -22,15 +24,15 @@ const errorHandler = require("./src/middlewares/errorHandler");
 const app = express();
 app.use(cors()); // permite que el frontend estando en otro puerto pueda acceder
 app.use(express.json());
-//expongo la carpeta upload donde se subirán los archivos de las documentaciones
-//Todo lo que esté dentro de la carpeta /uploads puede ser accedido públicamente desde la URL /uploads/...
-app.use("/uploads", express.static("uploads"));
 
 app.use("/api", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/persons", personRoutes);
 app.use("/api/documentations", documentationRoutes);
+//expongo la carpeta upload donde se subirán los archivos de las documentaciones
+//Todo lo que esté dentro de la carpeta /uploads puede ser accedido públicamente desde la URL /uploads/...
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use('/api/dashboard', dashboardRoutes);
 app.use("/api/drivers", driverRoutes);
 app.use("/api/vehiculos", vehiculosRoutes);
@@ -39,6 +41,7 @@ app.use("/api/provincias", provinciaRoutes);
 app.use("/api/mantenimientos", mantenimientoRoutes);
 app.use("/viajes", viajesRoutes);
 app.use("/api/expenses", expenseRoutes);
+app.use("/api/reportes", reporteRoutes);
 // app.use("/api/chofer-vehiculos", choferVehiculosRoutes); // DEPRECADO - Ya no se usa, la asignación se maneja en Viajes
 
 // Middleware global de errores

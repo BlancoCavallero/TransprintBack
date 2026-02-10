@@ -22,12 +22,21 @@ const obtenerPorId = async (req, res, next) => {
 
 const crear = async (req, res, next) => {
   try {
+    console.log('=== CREAR DOCUMENTACIÓN ==>');
+    console.log('Body:', req.body);
+    console.log('File:', req.file);
+    
     // Clonamos el body en data
     const data = { ...req.body };
-
-    if (req.file) {
-      data.detalle = `/uploads/${req.file.filename}`; // Si hay archivo, guardamos su ruta
+    
+    // Validar que venga el archivo
+    if (!req.file) {
+      return errorResponse(res, "El archivo PDF es obligatorio", 400);
     }
+    
+    // Construir la ruta del archivo
+    data.detalle = `/uploads/${req.file.filename}`;
+
     const created = await documentationService.crear(data);
     successResponse(res, created, "Documentación cargada exitosamente");
   } catch (error) {
@@ -38,6 +47,11 @@ const crear = async (req, res, next) => {
 
 const actualizar = async (req, res, next) => {
   try {
+    console.log('=== ACTUALIZAR DOCUMENTACIÓN ==>');
+    console.log('ID:', req.params.id);
+    console.log('Body:', req.body);
+    console.log('File:', req.file);
+    
     const id = req.params.id;
     const resultado = await documentationService.obtenerPorId(id);
     if (!resultado)
@@ -45,15 +59,27 @@ const actualizar = async (req, res, next) => {
 
     // Clonamos los datos nuevos del body
     const data = { ...req.body };
+    
+    // Limpiar detalle si viene como objeto vacío
+    if (data.detalle && typeof data.detalle === 'object' && Object.keys(data.detalle).length === 0) {
+      delete data.detalle;
+    }
+    
     // Si vino un archivo, actualizamos el campo 'detalle'
     if (req.file) {
       data.detalle = `/uploads/${req.file.filename}`;
     }
+    // IMPORTANTE: No incluir 'detalle' si no hay archivo nuevo
+    // Esto evita que se actualice con undefined o string vacío
 
     const result = await documentationService.actualizar(id, data);
+    
     successResponse(res, result, "Documentación actualizada correctamente");
   } catch (error) {
     console.error("Error al actualizar documentación:", error);
+    if (req.file) {
+      eliminarArchivo(`/uploads/${req.file.filename}`);
+    }
     next(error);
   }
 };
