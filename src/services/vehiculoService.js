@@ -143,7 +143,7 @@ const verificarMantenimientoActivo = async (idVehiculo) => {
   };
 };
 
-// no funciona por id?
+
 const obtenerVehiculos = async (filtros = {}) => {
   // Si filtros es un número o string (un ID suelto), lo convertimos en objeto
   if (typeof filtros !== 'object') {
@@ -277,7 +277,7 @@ const actualizar = async (id, vehiculo) => {
       tipoFinal,
       id,
     ]
-  );*/
+  );
   // Actualizar datos del Vehiculo
   
   const datosVehiculoActualizar = {};
@@ -306,22 +306,6 @@ const actualizar = async (id, vehiculo) => {
   return { idVehiculo: id, ...vehiculo, tipo: tipoFinal };
 };
 
-
-
-const eliminarVehiculo = async (id) => {
-  const [result] = await db.query("DELETE FROM Vehiculo WHERE idVehiculo = ?", [
-    id,
-  ]);
-
-  if (result.affectedRows === 0) {
-    const error = new Error("Vehículo no encontrado");
-    error.status = 404;
-    throw error;
-  }
-
-  return { message: "Vehículo eliminado correctamente" };
-};*/
-
 // --- Dar de baja un Vehiculo ---
 const bajaVehiculo = async (idVehiculo, accion) => {
   const { enViaje: estaEnViaje } = await verificarViajeActivo(idVehiculo);
@@ -333,7 +317,7 @@ const bajaVehiculo = async (idVehiculo, accion) => {
   }
 
  
-  // Inactivar Vehiculo
+  // Inactivar/Reactivar Vehiculo
   if (!["baja", "reactivar"].includes(accion)) {
         throw new Error("Acción invalida, ingrese 'baja' o 'reactivar'");
   }
@@ -427,7 +411,6 @@ module.exports = {
   obtenerVehiculos,
   crear,
   actualizar,
-  //eliminarVehiculo,
   bajaVehiculo,
   consultarDisponibilidad,
   calcularEstadoVehiculo, 
