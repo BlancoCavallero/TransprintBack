@@ -542,7 +542,7 @@ HAVING documentacionVencida > 0
         return {
             choferes: {
                 licenciasVencidas: totalVencidas || 0,
-                vencidasPertenecenA: Number(licenciasChoferes.filter(c => c.licenciasVencidas > 0)),
+                vencidasPertenecenA: licenciasChoferes.filter(c => c.licenciasVencidas > 0),
 
                 licenciasPorVencer: totalPorVencer || 0,
                 porVencerPertenecenA: licenciasChoferes.filter(c => c.licenciasPorVencer > 0),
