@@ -33,15 +33,15 @@ const obtenerDatosDashboard = async () => {
             alertas: {
                 choferes: {
                     licenciasVencidas: 0,
-                    vencidasPertenecenA: '',
+                    vencidasPertenecenA: [],
                     licenciasPorVencer: 0,
-                    porVencerPertenecenA: ''
+                    porVencerPertenecenA: []
                 },
                 vehiculos: {
                     documentacionVencida: 0,
-                    vencidasPertenecenAl: '',
+                    vencidasPertenecenAl: [],
                     documentacionPorVencer: 0,
-                    porVencerPertenecenAl: ''
+                    porVencerPertenecenAl: []
                 }
             }
         };
@@ -542,17 +542,17 @@ HAVING documentacionVencida > 0
         return {
             choferes: {
                 licenciasVencidas: totalVencidas || 0,
-                vencidasPertenecenA: licenciasChoferes.filter(c => c.licenciasVencidas > 0),
+                vencidasPertenecenA: licenciasChoferes.filter(c => c.licenciasVencidas > 0) || [],
 
                 licenciasPorVencer: totalPorVencer || 0,
-                porVencerPertenecenA: licenciasChoferes.filter(c => c.licenciasPorVencer > 0),
+                porVencerPertenecenA: licenciasChoferes.filter(c => c.licenciasPorVencer > 0) || [],
             },
             vehiculos: {
                 documentacionVencida: totalDocumentacionesVencida || 0,
-                vencidasPertenecenAl: documentacionesVehiculos.filter(v => v.documentacionVencida > 0),
-                
+                vencidasPertenecenAl: documentacionesVehiculos.filter(v => v.documentacionVencida > 0) || [],
+
                 documentacionPorVencer: totalDocumentacionesPorVencer || 0,
-                porVencerPertenecenAl: documentacionesVehiculos.filter(v => v.documentacionPorVencer > 0)
+                porVencerPertenecenAl: documentacionesVehiculos.filter(v => v.documentacionPorVencer > 0) || []
             }
         };
 
@@ -561,14 +561,18 @@ HAVING documentacionVencida > 0
         return {
             choferes: {
                 licenciasVencidas: 0,
-                licenciasPorVencer: 0
+                vencidasPertenecenA: [],
+                licenciasPorVencer: 0,
+                porVencerPertenecenA: []
             },
             vehiculos: {
                 documentacionVencida: 0,
-                documentacionPorVencer: 0
+                vencidasPertenecenAl: [],
+                documentacionPorVencer: 0,
+                porVencerPertenecenAl: []
             }
-        };
-    }
+        }
+    };
 };
 
 module.exports = {

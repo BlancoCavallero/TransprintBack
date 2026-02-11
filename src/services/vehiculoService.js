@@ -47,6 +47,14 @@ const verificarDocumentacion = async (idVehiculo) => {
     [idVehiculo]
   );
 
+  // 🆕 NO TIENE NINGÚN DOCUMENTO
+  if (documentos.length === 0) {
+    return {
+      estado: "PREHABILITADO",
+      motivos: ["Chofer sin documentación cargada"],
+    };
+  }
+
   // Última Vtv
   const ultimaVtv = documentos.find(d =>
     d.nombre.toLowerCase().includes("vtv")
@@ -62,8 +70,12 @@ const verificarDocumentacion = async (idVehiculo) => {
   if (!ultimoSeguro) motivos.push("Falta Seguro");
 
   if (motivos.length > 0) {
-    return { cumpleRequisitos: false, motivos };
+    return {
+      estado: "INHABILITADO",
+      motivos,
+    };
   }
+
 
 
   //normalizo fechaVencimiento para comparar entre Date's
@@ -74,13 +86,17 @@ const verificarDocumentacion = async (idVehiculo) => {
   if (!vencSeguro || vencSeguro < hoy) motivos.push("Seguro vencido");
 
   if (motivos.length > 0) {
-    return { cumpleRequisitos: false, motivos };
+    return {
+      estado: "INHABILITADO",
+      motivos,
+    };
   }
 
   return {
-    cumpleRequisitos: true,
+    estado: "HABILITADO",
     motivos: ["Documentación completa y vigente"],
   };
+
 };
 
 const verificarViajeActivo = async (idVehiculo) => {
@@ -96,7 +112,7 @@ const verificarViajeActivo = async (idVehiculo) => {
     [idVehiculo]
   );
 
-  
+
   if (viajes.length === 0) {
     return { enViaje: false };
   }
@@ -126,7 +142,7 @@ const verificarMantenimientoActivo = async (idVehiculo) => {
     [idVehiculo]
   );
 
-  
+
   if (mantenimientos.length === 0) {
     return { activo: false };
   }
@@ -279,14 +295,14 @@ const actualizar = async (id, vehiculo) => {
     ]
   );
   // Actualizar datos del Vehiculo
-  
+
   const datosVehiculoActualizar = {};
   if (anio !== undefined) datosVehiculoActualizar.anio = anio;
   if (marca !== undefined) datosVehiculoActualizar.marca = marca;
   if (modelo !== undefined) datosVehiculoActualizar.modelo = modelo;
   if (patente !== undefined) datosVehiculoActualizar.patente = patente;
   if (tipoFinal !== check[0].tipo) datosVehiculoActualizar.tipo = tipoFinal;
-  
+
   if (Object.keys(datosVehiculoActualizar).length > 0) {
     const setClause = Object.keys(datosVehiculoActualizar)
       .map((key) => `${key} = ?`)
@@ -316,24 +332,24 @@ const bajaVehiculo = async (idVehiculo, accion) => {
     throw new Error("El Vehiculo se encuentra en viaje y no puede eliminarse");
   }
 
- 
+
   // Inactivar/Reactivar Vehiculo
   if (!["baja", "reactivar"].includes(accion)) {
-        throw new Error("Acción invalida, ingrese 'baja' o 'reactivar'");
+    throw new Error("Acción invalida, ingrese 'baja' o 'reactivar'");
   }
 
-  if(accion === "baja") {
-  await db.query(
-    "UPDATE Vehiculo SET activo = 0 WHERE idVehiculo = ?",
-    [idVehiculo]
-  );
+  if (accion === "baja") {
+    await db.query(
+      "UPDATE Vehiculo SET activo = 0 WHERE idVehiculo = ?",
+      [idVehiculo]
+    );
   } else if (accion === "reactivar") {
-  await db.query(
-    "UPDATE Vehiculo SET activo = 1 WHERE idVehiculo = ?",
-    [idVehiculo]
-  );
-} 
-return await obtenerVehiculos(idVehiculo);
+    await db.query(
+      "UPDATE Vehiculo SET activo = 1 WHERE idVehiculo = ?",
+      [idVehiculo]
+    );
+  }
+  return await obtenerVehiculos(idVehiculo);
 
 };
 
@@ -347,26 +363,23 @@ const calcularEstadoVehiculo = async (idVehiculo) => {
 
 
   if (mantenimientoStatus.activo) {
-    estado = "EN_MANTENIMIENTO";
-    motivos.push(...mantenimientoStatus.motivos);
+    return {
+      estadoDisponibilidad: "EN_MANTENIMIENTO",
+      motivos: mantenimientoStatus.motivos
+    };
 
   } else if (viajeStatus.enViaje) {
-    estado = "OCUPADO";
-    motivos.push(...viajeStatus.motivos);
-
-  } else if (!docStatus.cumpleRequisitos) {
-    estado = "INHABILITADO";
-    motivos.push(...docStatus.motivos);
-
+    return {
+      estadoDisponibilidad: "OCUPADO",
+      motivos: viajeStatus.motivos
+    }
   } else {
-    estado = "HABILITADO";
-    motivos.push(...docStatus.motivos);
+    // 🔄 Si no está en viaje → usar estado documental
+    return {
+      estadoDisponibilidad: docStatus.estado,
+      motivos: docStatus.motivos,
+    };
   }
-
-  return {
-    estadoDisponibilidad: estado,
-    motivos,
-  };
 };
 
 
@@ -413,5 +426,5 @@ module.exports = {
   actualizar,
   bajaVehiculo,
   consultarDisponibilidad,
-  calcularEstadoVehiculo, 
+  calcularEstadoVehiculo,
 };

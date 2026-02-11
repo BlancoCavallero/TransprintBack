@@ -37,6 +37,14 @@ const verificarDocumentacion = async (idChofer) => {
     [idChofer]
   );
 
+    // 🆕 NO TIENE NINGÚN DOCUMENTO
+  if (documentos.length === 0) {
+    return {
+      estado: "PREHABILITADO",
+      motivos: ["Chofer sin documentación cargada"],
+    };
+  }
+
     // Último carnet
   const ultimoCarnet = documentos.find(d =>
     d.nombre.toLowerCase().includes("carnet")
@@ -69,14 +77,17 @@ if (!ultimoApto) {
     motivos.push("Apto físico vencido");
   }
 }
+  
 
-if (motivos.length > 0) {
-  return { cumpleRequisitos: false, motivos };
-}
-
+  if (motivos.length > 0) {
+    return {
+      estado: "INHABILITADO",
+      motivos,
+    };
+  }
 
   return {
-    cumpleRequisitos: true,
+    estado: "HABILITADO",
     motivos: ["Documentación completa y vigente"],
   };
 };
@@ -537,29 +548,43 @@ const consultarHistorial = async (idChofer, { desde, hasta, estado }) => {
 
 const calcularEstadoChofer = async (idChofer) => {
 
+  /*// Traigo documentos directamente
+  const [documentos] = await db.query(
+    `SELECT nombre, fechaVencimiento 
+     FROM Documentacion 
+     WHERE idChofer = ?`,
+    [idChofer]
+  );
 
+  // 🔵 Si no tiene NINGÚN documento → PREHABILITADO
+  if (documentos.length === 0) {
+    return {
+      estadoDisponibilidad: "PREHABILITADO",
+      motivos: ["Chofer sin documentación cargada"],
+    };
+  }
+
+  // Si tiene documentos → usamos validación normal
+*/
   const docStatus = await verificarDocumentacion(idChofer);
   const viajeStatus = await verificarViajeActivo(idChofer);
 
-  let estado;
-  const motivos = [];
-
+  //let estado;
+  //const motivos = [];
   
   
+  // 🚛 Prioridad máxima
   if (viajeStatus.enViaje) {
-    estado = "OCUPADO";
-    motivos.push(...viajeStatus.motivos);
-  } else if (docStatus.cumpleRequisitos) {
-    estado = "HABILITADO";
-    motivos.push(...docStatus.motivos);
-  } else {
-    estado = "INHABILITADO";
-    motivos.push(...docStatus.motivos);
+    return {
+      estadoDisponibilidad: "OCUPADO",
+      motivos: viajeStatus.motivos,
+    };
   }
 
+  // 🔄 Si no está en viaje → usar estado documental
   return {
-    estadoDisponibilidad: estado,
-    motivos,
+    estadoDisponibilidad: docStatus.estado,
+    motivos: docStatus.motivos,
   };
 };
 
