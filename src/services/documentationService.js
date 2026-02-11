@@ -251,14 +251,14 @@ const crear = async (data) => {
       throw new Error("El idVehiculo ingresado no existe");
     }
 
-    // Verificar si ya existe este tipo de documento para este vehículo
+    // Verificar si ya existe este mismo documento para este vehículo
     const [documentoDuplicado] = await db.query(
-      "SELECT * FROM Documentacion WHERE nombre = ? AND idVehiculo = ?",
-      [nombre, idVehiculo]
+      "SELECT * FROM Documentacion WHERE detalle = ? and fechaVencimiento = ? and idVehiculo = ?",
+      [detalle, fechaVencimiento, idVehiculo]
     );
     if (documentoDuplicado.length > 0) {
       throw new Error(
-        `El vehículo ya tiene un documento de tipo "${nombre}" cargado`
+        `El vehículo ya tiene registrada esta documentación`
       );
     }
   }
