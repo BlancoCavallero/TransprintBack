@@ -285,7 +285,7 @@ const actualizar = async (id, vehiculo) => {
   if (marca !== undefined) datosVehiculoActualizar.marca = marca;
   if (modelo !== undefined) datosVehiculoActualizar.modelo = modelo;
   if (patente !== undefined) datosVehiculoActualizar.patente = patente;
-  if (tipo !== undefined) datosVehiculoActualizar.tipo = tipo;
+  if (tipoFinal !== check[0].tipo) datosVehiculoActualizar.tipo = tipoFinal;
   
   if (Object.keys(datosVehiculoActualizar).length > 0) {
     const setClause = Object.keys(datosVehiculoActualizar)
